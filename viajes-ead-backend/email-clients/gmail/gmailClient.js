@@ -12,7 +12,7 @@ const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
 const oAuth2Client = getOAuth2Client(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, REFRESH_TOKEN);
 
 // Función para enviar correo de confirmación
-export async function sendConfirmationMail(mailOptions, mail, qrHash) {
+export async function sendConfirmationMail(mailOptions) {
     try {
         const accessToken = await oAuth2Client.getAccessToken();
 

@@ -2,6 +2,7 @@
   "name": "viajes-ead-view",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -18,6 +19,7 @@
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
+    "axios": "^1.10.0",
     "components": "^0.1.0",
     "config": "^4.0.0",
     "expo": "~53.0.11",

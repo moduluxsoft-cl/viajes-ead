@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
+import {sendConfirmationEmail} from "@/api/emailApi";
 
 export interface StudentFormData {
     nombre: string;
@@ -15,7 +16,7 @@ interface StudentFormProps {
     onSubmit: (data: StudentFormData) => void;
 }
 
-export const StudentForm: React.FC<StudentFormProps> = ({ onSubmit }) => {
+export const StudentForm: React.FC<StudentFormProps> = () => {
     const [formData, setFormData] = useState<StudentFormData>({
         nombre: '',
         apellido: '',
@@ -23,11 +24,6 @@ export const StudentForm: React.FC<StudentFormProps> = ({ onSubmit }) => {
         carrera: '',
         fechaViaje: '',
     });
-
-    const handleSubmit = () => {
-        // Aquí iría la validación
-        onSubmit(formData);
-    };
 
     return (
         <View style={styles.container}>
@@ -61,9 +57,16 @@ export const StudentForm: React.FC<StudentFormProps> = ({ onSubmit }) => {
                 value={formData.fechaViaje}
                 onChangeText={(text) => setFormData({ ...formData, fechaViaje: text })}
             />
-            <Button title="Generar QR" onPress={handleSubmit} />
+            <Button title="Generar QR" onPress={async () => await handleSubmit()} />
         </View>
     );
+};
+
+const handleSubmit = async () => {
+    // Aquí iría la validación
+    await sendConfirmationEmail("cristoca2017@hotmail.com", "12345678")
+        .then(r => console.log(r))
+        .catch(e => console.log(e));
 };
 
 const styles = StyleSheet.create({

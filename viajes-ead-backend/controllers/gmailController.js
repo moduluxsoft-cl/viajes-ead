@@ -1,11 +1,10 @@
-import { encrypt, decrypt } from "../encryption/encryption.js";
+import { decrypt } from "../encryption/encryption.js";
 import dotenv from "dotenv";
 dotenv.config();
 
 export const sendConfirmationMailHandler = async (req, res) => {
     try {
-        const data = { email: "cristoca2017@hotmail.com", qrHash: "1234567890" };
-        
+        const { data } = req.body;
         // Convertir la clave de hexadecimal a un Buffer
         let key;
         try {
@@ -20,12 +19,8 @@ export const sendConfirmationMailHandler = async (req, res) => {
             return;
         }
 
-        // Cifrar los datos
-        const encryptedData = encrypt(JSON.stringify(data), key);
-        console.log("Datos cifrados:", encryptedData);
-
         // Desencriptar para verificar
-        const decryptedData = decrypt(encryptedData, key);
+        const decryptedData = decrypt(data, key);
         console.log("Datos desencriptados:", decryptedData);
 
         const jsonData = JSON.parse(decryptedData);

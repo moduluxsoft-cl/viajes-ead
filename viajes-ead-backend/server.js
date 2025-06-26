@@ -1,5 +1,5 @@
 import express from "express";
-import routes from "./routes/index.js"; // Importamos las rutas definidas
+import routes from "./routes/index.js";
 import cors from "cors";
 
 const app = express();
@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(cors());
 
 // Registrar todas las rutas
-app.use("/api", routes); // Prefijo general para las rutas (por ejemplo: /api/email/send/confirmation)
+app.use("/api", routes);
 
 // Servidor activo
 app.listen(PORT, () => {

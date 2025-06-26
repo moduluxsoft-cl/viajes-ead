@@ -7,18 +7,26 @@ interface CardProps {
 }
 
 export const Card: React.FC<CardProps> = ({ children, style }) => {
-    return <View style={[styles.card, style]}>{children}</View>;
+    return (
+        <View style={[styles.card, style]}>
+            {children}
+        </View>
+    );
 };
 
 const styles = StyleSheet.create({
     card: {
         backgroundColor: '#fff',
-        borderRadius: 16,
+        borderRadius: 12,
         padding: 20,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
         shadowOpacity: 0.1,
-        shadowRadius: 6,
-        elevation: 4,
+        shadowRadius: 4,
+        elevation: 3,
+        marginVertical: 8,
     },
 });

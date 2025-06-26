@@ -1,22 +1,46 @@
 import React from 'react';
-import { View, Text, Modal, StyleSheet } from 'react-native';
+import { View, Text, Modal, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
+import { QRData } from '../src/services/encryption';
 
 interface ResultModalProps {
     visible: boolean;
     success: boolean;
-    data?: {
-        nombre: string;
-        apellido: string;
-        rut: string;
-        carrera: string;
-        fechaViaje: string;
-    };
+    data?: QRData;
+    error?: string;
+    message?: string;
     onClose: () => void;
+    onValidate?: () => void;
+    validating?: boolean; // Prop para el estado de carga del botón
+    showValidateButton?: boolean;
 }
 
-export const ResultModal: React.FC<ResultModalProps> = ({ visible, success, data, onClose }) => {
+export const ResultModal: React.FC<ResultModalProps> = ({
+                                                            visible,
+                                                            success,
+                                                            data,
+                                                            error,
+                                                            message, // Se añade a la desestructuración
+                                                            onClose,
+                                                            onValidate,
+                                                            validating = false, // Se añade a la desestructuración
+                                                            showValidateButton = false
+                                                        }) => {
+    const formatDate = (dateString: string) => {
+        try {
+            return new Date(dateString).toLocaleDateString('es-CL');
+        } catch {
+            return dateString;
+        }
+    };
+
+    const formatTimestamp = (timestamp: number) => {
+        return new Date(timestamp).toLocaleString('es-CL');
+    };
+
+    const modalTitle = message ? 'Resultado de Validación' : (success ? 'Pase Válido' : 'Pase Inválido');
+
     return (
         <Modal
             animationType="slide"
@@ -26,38 +50,70 @@ export const ResultModal: React.FC<ResultModalProps> = ({ visible, success, data
         >
             <View style={styles.overlay}>
                 <Card style={styles.modal}>
-                    <View style={[styles.iconContainer, success ? styles.successBg : styles.errorBg]}>
-                        <Text style={styles.icon}>{success ? '✓' : '✗'}</Text>
-                    </View>
-                    <Text style={styles.title}>
-                        {success ? 'Pase Válido' : 'Pase Inválido'}
-                    </Text>
-                    {success && data && (
-                        <View style={styles.details}>
-                            <Text style={styles.detailText}>
-                                <Text style={styles.label}>Estudiante: </Text>
-                                {data.nombre} {data.apellido}
-                            </Text>
-                            <Text style={styles.detailText}>
-                                <Text style={styles.label}>RUT: </Text>
-                                {data.rut}
-                            </Text>
-                            <Text style={styles.detailText}>
-                                <Text style={styles.label}>Carrera: </Text>
-                                {data.carrera}
-                            </Text>
-                            <Text style={styles.detailText}>
-                                <Text style={styles.label}>Fecha: </Text>
-                                {data.fechaViaje}
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                        <View style={[
+                            styles.iconContainer,
+                            success ? styles.successBg : styles.errorBg
+                        ]}>
+                            <Text style={styles.icon}>
+                                {success ? '✓' : '✗'}
                             </Text>
                         </View>
-                    )}
-                    <Button title="Escanear otro código" onPress={onClose} />
+
+                        <Text style={styles.title}>{modalTitle}</Text>
+
+                        {message && (
+                            <Text style={styles.successMessage}>{message}</Text>
+                        )}
+
+                        {success && data ? (
+                            <View style={styles.details}>
+                                <DetailRow label="Estudiante" value={`${data.nombre} ${data.apellido}`} />
+                                <DetailRow label="RUT" value={data.rut} />
+                                <DetailRow label="Carrera" value={data.carrera} />
+                                <DetailRow label="Fecha de Viaje" value={data.fechaViaje} />
+                            </View>
+                        ) : (
+                            !message && (
+                                <Text style={styles.errorMessage}>
+                                    {error || 'Código QR inválido o expirado'}
+                                </Text>
+                            )
+                        )}
+
+                        <View style={styles.buttonContainer}>
+                            {success && showValidateButton && onValidate && (
+                                <Button
+                                    title="Validar Pase"
+                                    onPress={onValidate}
+                                    loading={validating} // Se usa la prop 'validating'
+                                    style={[styles.button, styles.validateButton]}
+                                />
+                            )}
+                            <Button
+                                title="Cerrar"
+                                onPress={onClose}
+                                style={[styles.button, styles.closeButton]}
+                            />
+                        </View>
+                    </ScrollView>
                 </Card>
             </View>
         </Modal>
     );
 };
+
+interface DetailRowProps {
+    label: string;
+    value: string;
+}
+
+const DetailRow: React.FC<DetailRowProps> = ({ label, value }) => (
+    <View style={styles.detailRow}>
+        <Text style={styles.label}>{label}:</Text>
+        <Text style={styles.value}>{value}</Text>
+    </View>
+);
 
 const styles = StyleSheet.create({
     overlay: {
@@ -70,7 +126,8 @@ const styles = StyleSheet.create({
     modal: {
         width: '100%',
         maxWidth: 400,
-        alignItems: 'center',
+        maxHeight: '80%',
+        padding: 24,
     },
     iconContainer: {
         width: 80,
@@ -79,6 +136,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 20,
+        alignSelf: 'center',
     },
     successBg: {
         backgroundColor: '#10b981',
@@ -96,17 +154,58 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#111827',
         marginBottom: 20,
+        textAlign: 'center',
     },
     details: {
-        width: '100%',
         marginBottom: 20,
     },
-    detailText: {
-        fontSize: 16,
-        color: '#374151',
-        marginBottom: 8,
+    detailRow: {
+        marginBottom: 12,
     },
     label: {
+        fontSize: 14,
+        color: '#6b7280',
         fontWeight: '600',
+        marginBottom: 2,
+    },
+    value: {
+        fontSize: 16,
+        color: '#111827',
+    },
+    successMessage: {
+        fontSize: 16,
+        color: '#059669',
+        textAlign: 'center',
+        marginBottom: 20,
+        padding: 16,
+        backgroundColor: '#d1fae5',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#a7f3d0',
+    },
+    errorMessage: {
+        fontSize: 16,
+        color: '#ef4444',
+        textAlign: 'center',
+        marginBottom: 20,
+        padding: 16,
+        backgroundColor: '#fef2f2',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#fecaca',
+    },
+    buttonContainer: {
+        gap: 12,
+        marginTop: 8,
+    },
+    button: {
+        marginVertical: 0,
+    },
+    validateButton: {
+        backgroundColor: '#10b981',
+    },
+    closeButton: {
+        backgroundColor: '#6b7280',
     },
 });
+

@@ -1,37 +1,43 @@
-import React from 'react';
-import { View, Text, TextInput, StyleSheet, TextInputProps } from 'react-native';
+import React, { forwardRef } from 'react';
+import {
+    View,
+    Text,
+    TextInput,
+    StyleSheet,
+    TextInputProps,
+    ViewStyle
+} from 'react-native';
 
 interface InputProps extends TextInputProps {
     label?: string;
-    error?: boolean;
-    errorMessage?: string;
+    error?: string;
+    containerStyle?: ViewStyle;
 }
 
-export const Input: React.FC<InputProps> = ({
-                                                label,
-                                                error = false,
-                                                errorMessage,
-                                                style,
-                                                ...props
-                                            }) => {
+export const Input = forwardRef<TextInput, InputProps>(({
+                                                            label,
+                                                            error,
+                                                            containerStyle,
+                                                            style,
+                                                            ...props
+                                                        }, ref) => {
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, containerStyle]}>
             {label && <Text style={styles.label}>{label}</Text>}
             <TextInput
+                ref={ref}
                 style={[
                     styles.input,
                     error && styles.inputError,
-                    style,
+                    style
                 ]}
                 placeholderTextColor="#9ca3af"
                 {...props}
             />
-            {error && errorMessage && (
-                <Text style={styles.errorText}>{errorMessage}</Text>
-            )}
+            {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
     );
-};
+});
 
 const styles = StyleSheet.create({
     container: {
@@ -39,19 +45,19 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 14,
-        fontWeight: '500',
+        fontWeight: '600',
         color: '#374151',
         marginBottom: 8,
     },
     input: {
         borderWidth: 1,
-        borderColor: '#e5e7eb',
-        borderRadius: 12,
-        paddingVertical: 12,
+        borderColor: '#d1d5db',
+        borderRadius: 8,
         paddingHorizontal: 16,
+        paddingVertical: 12,
         fontSize: 16,
+        backgroundColor: '#fff',
         color: '#111827',
-        backgroundColor: '#f9fafb',
     },
     inputError: {
         borderColor: '#ef4444',

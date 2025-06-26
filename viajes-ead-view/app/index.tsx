@@ -1,3 +1,4 @@
+// app/index.tsx
 import React, { useEffect } from "react";
 import { Text, View, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
@@ -11,14 +12,12 @@ export default function Index() {
     if (loading) return;
 
     if (user) {
-      // User is authenticated, redirect based on role
       if (role === 'student') {
         router.replace("/(student)");
       } else if (role === 'validator' || role === 'admin') {
         router.replace("/(validator)/scanner");
       }
     } else {
-      // User is not authenticated, redirect to login
       router.replace("/(auth)/login");
     }
   }, [user, role, loading]);

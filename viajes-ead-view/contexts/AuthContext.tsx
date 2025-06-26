@@ -1,21 +1,39 @@
+// src/contexts/AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/config/firebase';
+import {
+    onAuthStateChanged,
+    User,
+    signInWithEmailAndPassword,
+    signOut,
+    createUserWithEmailAndPassword, UserCredential
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '.././config/firebase'; //
 import { useRouter, useSegments } from 'expo-router';
-// Definimos el tipo de datos del contexto
-interface AuthContextType {
-    user: User | null;
-    role: 'student' | 'validator' | 'admin' | null;
-    loading: boolean;
-    login: (email: string, password: string) => Promise<void>;
-    logout: () => Promise<void>;
+
+export interface UserData {
+    uid: string;
+    email: string;
+    role: 'student' | 'validator' | 'admin';
+    nombre: string;
+    apellido: string;
+    rut?: string;
+    carrera?: string;
+    activo: boolean;
 }
 
-// Creamos el contexto
+interface AuthContextType {
+    user: User | null;
+    userData: UserData | null;
+    loading: boolean;
+    login: (email: string, password: string) => Promise<UserCredential>;
+    register: (email: string, password: string, userData: Partial<UserData>) => Promise<UserCredential>;
+    logout: () => Promise<void>;
+    updateUserData: (data: Partial<UserData>) => Promise<void>;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Hook personalizado para usar el contexto fácilmente
 export function useAuth() {
     const context = useContext(AuthContext);
     if (!context) {
@@ -24,10 +42,9 @@ export function useAuth() {
     return context;
 }
 
-// Proveedor del contexto
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [role, setRole] = useState<'student' | 'validator' | 'admin' | null>(null);
+    const [userData, setUserData] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
 
     const router = useRouter();
@@ -36,52 +53,90 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             setLoading(true);
-            if (currentUser) {
-                // Usuario ha iniciado sesión
-                setUser(currentUser);
-                // Buscar su rol en Firestore
-                const userDocRef = doc(db, 'users', currentUser.uid);
-                const userDocSnap = await getDoc(userDocRef);
 
-                if (userDocSnap.exists()) {
-                    const userData = userDocSnap.data();
-                    setRole(userData.role);
-                } else {
-                    console.warn("User document not found in Firestore!");
-                    setRole(null);
-                }
+            if (currentUser) {
+                setUser(currentUser);
+                await fetchUserData(currentUser.uid);
             } else {
-                // Usuario cerró sesión
                 setUser(null);
-                setRole(null);
+                setUserData(null);
             }
+
             setLoading(false);
         });
 
         return () => unsubscribe();
     }, []);
 
-    // Efecto para gestionar la navegación
+    // Gestión de navegación automática
     useEffect(() => {
-        if (loading) return; // No hacer nada mientras carga
+        if (loading) return;
 
-        const inAuthenticatedRoute = segments[0] === '(student)' || segments[0] === '(validator)';
+        const inAuthGroup = segments[0] === '(auth)';
+        const inProtectedGroup = segments[0] === '(student)' || segments[0] === '(validator)';
 
-        if (user && !inAuthenticatedRoute) {
-            // Si hay usuario pero no está en la app, redirigir
-            if (role === 'student') {
-                router.replace("/(student)");
-            } else if (role === 'validator' || role === 'admin') {
-                router.replace("/(validator)/scanner");
+        if (user && userData && !inProtectedGroup) {
+            if (userData.role === 'student') {
+                router.replace('/(student)');
+            } else if (userData.role === 'validator' || userData.role === 'admin') {
+                router.replace('/(validator)/scanner');
             }
-        } else if (!user && inAuthenticatedRoute) {
-            // Si no hay usuario pero está en una ruta protegida, redirigir a login
-            router.replace("/(auth)/login");
+        } else if (!user && inProtectedGroup) {
+            router.replace('/(auth)/login');
         }
-    }, [user, role, loading, segments]);
+    }, [user, userData, loading, segments]);
+
+    const fetchUserData = async (uid: string) => {
+        try {
+            const userDocRef = doc(db, 'users', uid);
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (userDocSnap.exists()) {
+                const fetchedData = {
+                    uid: userDocSnap.id,
+                    ...userDocSnap.data()
+                } as UserData;
+                setUserData(fetchedData);
+            } else {
+                console.warn("Documento de usuario no encontrado en Firestore");
+                setUserData(null);
+            }
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+            setUserData(null);
+        }
+    };
 
     const login = async (email: string, password: string) => {
-        await signInWithEmailAndPassword(auth, email, password);
+        return signInWithEmailAndPassword(auth, email, password);
+    };
+
+    const register = async (email: string, password: string, additionalData: Partial<UserData>) => {
+        const result = await createUserWithEmailAndPassword(auth, email, password);
+
+        const newUserData: UserData = {
+            uid: result.user.uid,
+            email: result.user.email!,
+            role: additionalData.role || 'student',
+            nombre: additionalData.nombre || '',
+            apellido: additionalData.apellido || '',
+            rut: additionalData.rut,
+            carrera: additionalData.carrera,
+            activo: true
+        };
+
+        await setDoc(doc(db, 'users', result.user.uid), {
+            ...newUserData,
+            fechaCreacion: new Date()
+        });
+
+        return result;
+    };
+
+    const updateUserData = async (data: Partial<UserData>) => {
+        if (!user) throw new Error('No user logged in');
+        await setDoc(doc(db, 'users', user.uid), data, { merge: true });
+        await fetchUserData(user.uid);
     };
 
     const logout = async () => {
@@ -90,10 +145,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const value = {
         user,
-        role,
+        userData,
         loading,
         login,
+        register,
         logout,
+        updateUserData,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

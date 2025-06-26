@@ -1,55 +1,106 @@
+// app/(validator)/scanner.tsx
 import React, { useState } from 'react';
-import { View, StyleSheet, SafeAreaView } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Header } from '../../components/ui/Header';
-import { ScannerFrame } from '../../components/ScannerFrame';
+import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import { QRScanner } from '../../components/QRScanner';
 import { ResultModal } from '../../components/ResultModal';
-import { Button } from '../../components/ui/Button';
+import { useAuth } from '../../contexts/AuthContext';
 
-const mockQRData = {
-    nombre: 'Juan',
-    apellido: 'Pérez',
-    rut: '12.345.678-9',
-    carrera: 'Ingeniería Civil',
-    fechaViaje: '15/01/2025',
-};
+
+import { decryptQRData, QRData } from '../../src/services/encryption';
+import { obtenerPasePorId, actualizarEstadoPase } from '../../src/services/pasesService';
 
 export default function ScannerScreen() {
-    const router = useRouter();
+    const { userData } = useAuth();
+    const [scanning, setScanning] = useState(false);
     const [showResult, setShowResult] = useState(false);
-    const [isValid, setIsValid] = useState(true);
+    const [scanResult, setScanResult] = useState<{
+        success: boolean;
+        data?: QRData;
+        error?: string;
+        message?: string;
+    }>({ success: false });
+    const [validating, setValidating] = useState(false);
 
-    const handleLogout = () => {
-        router.replace('/login');
+    const handleQRScanned = async (qrData: string) => {
+        setScanning(false);
+        try {
+            const decryptedData = decryptQRData(qrData);
+            setScanResult({ success: true, data: decryptedData });
+        } catch (error) {
+            setScanResult({
+                success: false,
+                error: error instanceof Error ? error.message : 'Código QR inválido'
+            });
+        }
+        setShowResult(true);
     };
 
-    const handleScan = () => {
-        // Simular escaneo aleatorio
-        setIsValid(Math.random() > 0.3);
-        setShowResult(true);
+    const handleValidatePase = async () => {
+        if (!scanResult.data?.paseId) return;
+
+        setValidating(true);
+        try {
+            const pase = await obtenerPasePorId(scanResult.data.paseId);
+
+            if (!pase) {
+                throw new Error("Pase no encontrado en la base de datos.");
+            }
+            if (pase.estado !== 'activo') {
+                throw new Error(`Este pase ya fue ${pase.estado}.`);
+            }
+
+            await actualizarEstadoPase(scanResult.data.paseId, 'usado');
+
+            setScanResult({
+                ...scanResult,
+                success: true,
+                message: "¡Pase validado exitosamente!"
+            });
+
+        } catch (error) {
+            setScanResult({
+                ...scanResult,
+                success: false,
+                error: error instanceof Error ? error.message : 'Error al validar el pase'
+            });
+        } finally {
+            setValidating(false);
+        }
+    };
+
+    const resetScanner = () => {
+        setShowResult(false);
+        setScanResult({ success: false });
+        setValidating(false);
     };
 
     return (
         <SafeAreaView style={styles.container}>
-            <Header
-                title="Inspector García"
-                rightAction={{ label: 'Salir', onPress: handleLogout }}
-            />
-            <View style={styles.content}>
-                <View style={styles.cameraPlaceholder}>
-                    <ScannerFrame />
-                </View>
-                <Button
-                    title="Simular Escaneo"
-                    onPress={handleScan}
-                    style={styles.scanButton}
+            <View style={styles.header}>
+                <Text style={styles.title}>Validador de Pases</Text>
+                <Text style={styles.subtitle}>
+                    {userData?.nombre} {userData?.apellido}
+                </Text>
+            </View>
+
+            <View style={styles.scannerContainer}>
+                <QRScanner
+                    onQRScanned={handleQRScanned}
+                    scanning={scanning}
+                    onToggleScanning={() => setScanning(!scanning)}
                 />
             </View>
+
             <ResultModal
                 visible={showResult}
-                success={isValid}
-                data={isValid ? mockQRData : undefined}
-                onClose={() => setShowResult(false)}
+                success={scanResult.success}
+                data={scanResult.data}
+                error={scanResult.error}
+                message={scanResult.message}
+                onClose={resetScanner}
+                onValidate={handleValidatePase}
+                validating={validating}
+                showValidateButton={!!scanResult.data?.paseId && !scanResult.message}
             />
         </SafeAreaView>
     );
@@ -60,18 +111,25 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f9fafb',
     },
-    content: {
-        flex: 1,
+    header: {
+        backgroundColor: '#667eea',
         padding: 20,
+        paddingTop: 40,
     },
-    cameraPlaceholder: {
+    title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#fff',
+        textAlign: 'center',
+    },
+    subtitle: {
+        fontSize: 16,
+        color: '#fff',
+        textAlign: 'center',
+        marginTop: 4,
+        opacity: 0.9,
+    },
+    scannerContainer: {
         flex: 1,
-        backgroundColor: '#374151',
-        borderRadius: 20,
-        overflow: 'hidden',
-        marginBottom: 20,
-    },
-    scanButton: {
-        marginBottom: 20,
     },
 });

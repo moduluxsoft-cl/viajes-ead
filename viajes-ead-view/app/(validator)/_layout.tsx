@@ -1,30 +1,26 @@
+// app/(validator)/_layout.tsx
+import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function ValidatorLayout() {
+    const { userData } = useAuth();
+
     return (
         <Tabs
             screenOptions={{
-                headerShown: false,
                 tabBarActiveTintColor: '#667eea',
                 tabBarInactiveTintColor: '#9ca3af',
-                tabBarStyle: {
-                    backgroundColor: '#fff',
-                    borderTopWidth: 1,
-                    borderTopColor: '#e5e7eb',
-                    paddingBottom: 8,
-                    paddingTop: 8,
-                    height: 60,
-                },
+                headerShown: false, // Las pantallas individuales ya tienen su propio encabezado
             }}
         >
             <Tabs.Screen
                 name="scanner"
                 options={{
-                    title: 'Scanner',
+                    title: 'Escanear',
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="qr-code-outline" size={size} color={color} />
+                        <Ionicons name="scan" color={color} size={size} />
                     ),
                 }}
             />
@@ -33,10 +29,22 @@ export default function ValidatorLayout() {
                 options={{
                     title: 'Usuarios',
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="people-outline" size={size} color={color} />
+                        <Ionicons name="people" color={color} size={size} />
                     ),
                 }}
             />
+
+ {userData?.role === 'admin' ? (
+                <Tabs.Screen
+                    name="configuracion"
+                    options={{
+                        title: 'Configurar',
+                        tabBarIcon: ({ color, size }) => (
+                            <Ionicons name="settings" color={color} size={size} />
+                        ),
+                    }}
+                />
+            ) : null}
         </Tabs>
     );
 }

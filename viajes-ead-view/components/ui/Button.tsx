@@ -1,41 +1,76 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import {
+    TouchableOpacity,
+    Text,
+    StyleSheet,
+    ActivityIndicator,
+    ViewStyle,
+    TextStyle,
+    StyleProp,
+} from 'react-native';
 
 interface ButtonProps {
     title: string;
-    onPress?: () => void;
-    variant?: 'primary' | 'secondary';
-    disabled?: boolean;
+    onPress: () => void;
     loading?: boolean;
-    style?: ViewStyle;
-    textStyle?: TextStyle;
+    disabled?: boolean;
+    style?: StyleProp<ViewStyle>;
+    textStyle?: StyleProp<TextStyle>;
+    variant?: 'primary' | 'secondary' | 'danger';
 }
 
 export const Button: React.FC<ButtonProps> = ({
                                                   title,
                                                   onPress,
-                                                  variant = 'primary',
-                                                  disabled = false,
                                                   loading = false,
+                                                  disabled = false,
                                                   style,
                                                   textStyle,
+                                                  variant = 'primary',
                                               }) => {
+    const getButtonStyle = () => {
+        switch (variant) {
+            case 'secondary':
+                return styles.secondaryButton;
+            case 'danger':
+                return styles.dangerButton;
+            default:
+                return styles.primaryButton;
+        }
+    };
+
+    const getTextStyle = () => {
+        switch (variant) {
+            case 'secondary':
+                return styles.secondaryText;
+            default:
+                return styles.primaryText;
+        }
+    };
+
+    const isDisabled = disabled || loading;
+
     return (
         <TouchableOpacity
             style={[
                 styles.button,
-                variant === 'primary' ? styles.primaryButton : styles.secondaryButton,
-                disabled && styles.disabledButton,
+                getButtonStyle(),
+                isDisabled && styles.disabledButton,
                 style,
             ]}
             onPress={onPress}
-            disabled={disabled || loading}
+            disabled={isDisabled}
             activeOpacity={0.8}
         >
             {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color="#fff" size="small" />
             ) : (
-                <Text style={[styles.buttonText, textStyle]}>{title}</Text>
+                <Text style={[
+                    getTextStyle(),
+                    textStyle
+                ]}>
+                    {title}
+                </Text>
             )}
         </TouchableOpacity>
     );
@@ -43,26 +78,35 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
     button: {
-        paddingVertical: 16,
+        paddingVertical: 12,
         paddingHorizontal: 24,
-        borderRadius: 12,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 52,
+        minHeight: 48,
     },
     primaryButton: {
         backgroundColor: '#667eea',
     },
     secondaryButton: {
-        backgroundColor: '#764ba2',
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: '#667eea',
+    },
+    dangerButton: {
+        backgroundColor: '#ef4444',
     },
     disabledButton: {
         opacity: 0.5,
     },
-    buttonText: {
+    primaryText: {
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
     },
+    secondaryText: {
+        color: '#667eea',
+        fontSize: 16,
+        fontWeight: '600',
+    },
 });
-

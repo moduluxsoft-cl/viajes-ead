@@ -1,13 +1,17 @@
+// firebase.ts
 import { initializeApp } from "firebase/app";
 import { getFirestore } from 'firebase/firestore';
 import {
     getAuth,
-    browserLocalPersistence,
-    setPersistence
+    initializeAuth,
+    getReactNativePersistence,
+    Auth
 } from 'firebase/auth';
+import {Platform} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Firebase configuration
-const firebaseConfig = {
+export const firebaseConfig = {
     apiKey: "AIzaSyCo_eMk6NrQEqMB757fgU3FpMjLwBhfI9w",
     authDomain: "viajes-ead.firebaseapp.com",
     projectId: "viajes-ead",
@@ -24,12 +28,14 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // Inicializar Auth con persistencia en el dispositivo
-const auth = getAuth(app);
-// Configurar persistencia local
-setPersistence(auth, browserLocalPersistence)
-    .catch((error) => {
-        console.error("Error setting persistence:", error);
+let auth: Auth;
+if (Platform.OS === 'web') {
+    auth = getAuth(app);
+} else {
+    auth = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage)
     });
+}
 
 // Exportar servicios para usar en la app
 export { auth, db };

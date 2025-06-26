@@ -59,6 +59,26 @@ export const UserFormModal = ({ visible, onClose, onSubmit, initialData, saving 
         onSubmit(user, password);
     };
 
+    const formatRUT = (rut: string) => {
+        // Elimina puntos, guion y caracteres no numéricos
+        const cleanRut = rut.replace(/[^\dkK]/g, '');
+
+        // Si el RUT no tiene más de 9 caracteres
+        if (cleanRut.length <= 9) {
+            const body = cleanRut.slice(0, -1); // Parte numérica sin el último dígito
+            const dv = cleanRut.slice(-1);
+
+            // Agrega puntos a la parte numérica
+            const formattedBody = body
+                .replace(/\B(?=(\d{3})+(?!\d))/g, '.'); // Añade puntos cada 3 dígitos
+
+            // Si tiene al menos 2 dígitos, agrega el guion
+            return cleanRut.length > 1 ? (`${formattedBody}-${dv}`) : (dv);
+        }
+
+        return cleanRut;
+    };
+
     return (
         <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
             <View style={styles.modalContainer}>
@@ -83,7 +103,12 @@ export const UserFormModal = ({ visible, onClose, onSubmit, initialData, saving 
                         )}
 
                         <Text style={styles.label}>RUT</Text>
-                        <TextInput style={styles.input} value={user.rut} onChangeText={t => setUser(u => ({ ...u, rut: t }))} />
+                        <TextInput
+                            style={styles.input}
+                            value={user.rut}
+                            onChangeText={t => setUser(u => ({ ...u, rut: formatRUT(t) }))}
+                            maxLength={12}
+                        />
 
                         <Text style={styles.label}>Carrera</Text>
                         <View style={styles.pickerContainer}>

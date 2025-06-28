@@ -35,8 +35,8 @@ initializeApp();
 
 export const updateTravelDateWeekly = onSchedule(
     {
-        schedule: '0 0 * * 0',
-        timeZone: 'America/Mexico_City',
+        schedule: '0 0 * * 4',
+        timeZone: 'America/Santiago',
     },
     async (event) => {
         await updateTravelDate();

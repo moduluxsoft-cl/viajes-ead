@@ -8,8 +8,6 @@
  */
 
 import {setGlobalOptions} from "firebase-functions";
-import {onRequest} from "firebase-functions/https";
-import * as logger from "firebase-functions/logger";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -26,7 +24,86 @@ import * as logger from "firebase-functions/logger";
 // this will be the maximum concurrent request count.
 setGlobalOptions({ maxInstances: 10 });
 
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+import {onSchedule} from "firebase-functions/scheduler";
+import {initializeApp} from "firebase-admin/app";
+import {getFirestore} from "firebase-admin/firestore";
+import {firestore} from "firebase-admin";
+import Timestamp = firestore.Timestamp;
+import {onRequest} from "firebase-functions/https";
+
+initializeApp();
+
+export const updateTravelDateWeekly = onSchedule(
+    {
+        schedule: '0 0 * * 0',
+        timeZone: 'America/Mexico_City',
+    },
+    async (event) => {
+        await updateTravelDate();
+    }
+);
+
+export const testUpdateTravelDate = onRequest(async (req, res) => {
+    try {
+        await updateTravelDate();
+        res.status(200).json({
+            message: "Fecha de viaje actualizada exitosamente",
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error en prueba:', error);
+        res.status(500).json({ error: "Error en prueba" });
+    }
+});
+
+
+async function updateTravelDate() {
+    try {
+        const db = getFirestore();
+        const propertiesCollection = db.collection('properties');
+        const querySnapshot = await propertiesCollection.where('name', '==', 'DATE_TRAVEL').get();
+
+        if (querySnapshot.empty) {
+            console.log('No se encontró el documento con name = "DATE_TRAVEL"');
+            throw new Error("Documento \"DATE_TRAVEL\" no encontrado.");
+        }
+
+        if (querySnapshot.size > 1) {
+            console.log('Se encontraron varios documentos con name = "DATE_TRAVEL"');
+            throw new Error("Se encontraron varios documentos con name = \"DATE_TRAVEL\".");
+        }
+
+        const travelDateDoc = querySnapshot.docs[0];
+        console.log(`Docuemnto con id = "${travelDateDoc.id}" encontrado.`);
+
+        const today = new Date();
+        const todayTimestamp = Timestamp.fromDate(today);
+
+        await travelDateDoc.ref.update({
+            value: todayTimestamp,
+            lastUpdated: Timestamp.now(),
+            updatedBy: 'scheduled_function'
+        }).then(() => {
+            console.log(`Documento actualizado correctamente.`);
+
+            return {
+                success: true,
+                documentId: travelDateDoc.id,
+                newDate: today.toISOString(),
+                message: 'Fecha de viaje actualizada exitosamente'
+            };
+
+        }).catch((error) => {
+            console.error(error.message);
+
+            return {
+                success: false,
+                documentId: travelDateDoc.id,
+                newDate: today.toISOString(),
+                message: error.message
+            };
+        })
+    } catch (error) {
+        console.error('Error actualizando documentos:', error);
+    }
+}

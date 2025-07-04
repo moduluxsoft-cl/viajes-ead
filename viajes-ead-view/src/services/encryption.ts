@@ -15,7 +15,7 @@ export interface QRData {
     expires: number;
 }
 
-export const encryptQRData = (data: QRData): string => {
+export const encryptQRData = (data: Partial<QRData>): string => {
     try {
         const jsonString = JSON.stringify(data);
         const encrypted = CryptoJS.AES.encrypt(jsonString, SECRET_KEY).toString();

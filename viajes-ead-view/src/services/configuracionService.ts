@@ -1,5 +1,5 @@
 // src/services/configuracionService.ts
-import { collection, getDocs, query, where, writeBatch, doc, Timestamp } from 'firebase/firestore';
+import {collection, getDocs, query, where, writeBatch, doc, Timestamp, limit, setDoc} from 'firebase/firestore';
 import { db } from '../../config/firebase';
 
 export interface ConfiguracionViaje {
@@ -61,39 +61,24 @@ const parseSpanishDate = (dateString: string): Date | null => {
 
 const propertiesCollectionRef = collection(db, 'properties');
 
-export const obtenerConfiguracionViaje = async (): Promise<Partial<ConfiguracionViaje>> => {
-    try {
-        const querySnapshot = await getDocs(propertiesCollectionRef);
-        const config: Partial<ConfiguracionViaje> = {};
+export const obtenerViajeActivo = async (): Promise<ConfiguracionViaje & { id: string } | null> => {
+    const viajesRef = collection(db, 'viajes');
+    const q = query(viajesRef, where("estado", "==", "abierto"), limit(1));
+    const snapshot = await getDocs(q);
 
-        querySnapshot.forEach((doc) => {
-            const property = doc.data();
-            switch (property.name) {
-                case 'DESTINATION':
-                    config.destino = property.value;
-                    break;
-                case 'MAX_CAPACITY':
-                    config.capacidadMaxima = Number(property.value);
-                    break;
-                case 'DATE_TRAVEL':
-                    if (property.value instanceof Timestamp) {
-                        config.fechaViaje = property.value.toDate();
-                    } else {
-                        const parsedDate = parseSpanishDate(property.value);
-                        if (parsedDate) {
-                            config.fechaViaje = parsedDate;
-                        } else {
-                            console.warn("No se pudo parsear la fecha:", property.value);
-                        }
-                    }
-                    break;
-            }
-        });
-        return config;
-    } catch (error) {
-        console.error("Error al obtener la configuración:", error);
-        throw new Error("No se pudo obtener la configuración del viaje.");
+    if (snapshot.empty) {
+        console.log("No se encontró ningún viaje activo.");
+        return null;
     }
+
+    const doc = snapshot.docs[0];
+    const data = doc.data();
+    return {
+        id: doc.id,
+        destino: data.destino,
+        fechaViaje: data.fechaViaje.toDate(),
+        capacidadMaxima: data.capacidadMaxima
+    };
 };
 
 export const guardarConfiguracionViaje = async (config: Partial<ConfiguracionViaje>): Promise<void> => {
@@ -147,5 +132,24 @@ export const getPropertyValues = async (propertyName: string): Promise<string[]>
     } catch (error) {
         console.error(`Error fetching property ${propertyName}:`, error);
         throw new Error(`No se pudo obtener la lista de ${propertyName}.`);
+    }
+};
+
+export const crearViajeManual = async (config: ConfiguracionViaje): Promise<void> => {
+    try {
+        const viajeId = `viaje_${config.fechaViaje.toISOString().split('T')[0]}`;
+        const viajeRef = doc(db, 'viajes', viajeId);
+
+        const nuevoViaje = {
+            ...config,
+            pasesGenerados: 0,
+            estado: 'abierto',
+            fechaViaje: Timestamp.fromDate(config.fechaViaje) // Asegúrate de que sea un Timestamp
+        };
+
+        await setDoc(viajeRef, nuevoViaje);
+    } catch (error) {
+        console.error("Error creando viaje manual:", error);
+        throw new Error("No se pudo crear el viaje manualmente.");
     }
 };

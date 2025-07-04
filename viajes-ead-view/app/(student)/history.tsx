@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// app/(student)/history.tsx
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -11,29 +12,53 @@ import {
 import { Card } from '../../components/ui/Card';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
-import { obtenerPasesEstudiante, Pase } from '../../src/services/pasesService';
+// Importamos todo desde el nuevo servicio central
+import {
+    obtenerPasesEstudiante,
+    Pase,
+    obtenerViajesPorIds,
+    Viaje
+} from '../../src/services/viajesService';
+
+// Creamos una nueva interfaz para combinar los datos del pase y los detalles de su viaje
+interface PaseConDetalles extends Pase {
+    detallesViaje?: Viaje;
+}
 
 export default function HistoryScreen() {
     const { userData } = useAuth();
-    const [pases, setPases] = useState<Pase[]>([]);
+    const [pases, setPases] = useState<PaseConDetalles[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        if (userData?.uid) {
-            loadPases();
-        }
-    }, [userData?.uid]);
-
-    const loadPases = async () => {
+    const loadPases = useCallback(async () => {
         if (!userData?.uid) {
             setLoading(false);
             return;
         }
-
+        setLoading(true);
         try {
+            // 1. Obtenemos todos los pases del estudiante
             const pasesData = await obtenerPasesEstudiante(userData.uid);
-            setPases(pasesData);
+            if (pasesData.length === 0) {
+                setPases([]);
+                setLoading(false);
+                return;
+            }
+
+            // 2. Recopilamos los IDs únicos de los viajes asociados a esos pases
+            const viajeIds = [...new Set(pasesData.map(p => p.viajeId).filter(Boolean))];
+
+            // 3. Obtenemos los detalles de todos esos viajes en una sola consulta
+            const viajesMap = await obtenerViajesPorIds(viajeIds);
+
+            // 4. Unimos la información del pase con los detalles de su viaje
+            const pasesConDetalles = pasesData.map(pase => ({
+                ...pase,
+                detallesViaje: viajesMap.get(pase.viajeId),
+            }));
+
+            setPases(pasesConDetalles);
         } catch (error) {
             console.error('Error loading pases:', error);
             const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
@@ -41,7 +66,13 @@ export default function HistoryScreen() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [userData?.uid]);
+
+    useEffect(() => {
+        if (userData?.uid) {
+            loadPases();
+        }
+    }, [userData?.uid, loadPases]);
 
     const onRefresh = async () => {
         setRefreshing(true);
@@ -51,34 +82,21 @@ export default function HistoryScreen() {
 
     const getStatusColor = (estado: string) => {
         switch (estado) {
-            case 'activo':
-                return '#10b981';
-            case 'usado':
-                return '#6b7280';
-            case 'expirado':
-                return '#ef4444';
-            default:
-                return '#6b7280';
+            case 'activo': return '#10b981';
+            case 'usado': return '#6b7280';
+            case 'expirado': return '#ef4444';
+            default: return '#6b7280';
         }
     };
 
     const getStatusText = (estado: string) => {
-        switch (estado) {
-            case 'activo':
-                return 'ACTIVO';
-            case 'usado':
-                return 'USADO';
-            case 'expirado':
-                return 'EXPIRADO';
-            default:
-                return estado.toUpperCase();
-        }
+        return estado.toUpperCase();
     };
 
-    const renderPase = ({ item }: { item: Pase }) => (
+    const renderPase = ({ item }: { item: PaseConDetalles }) => (
         <Card style={styles.paseCard}>
             <View style={styles.paseHeader}>
-                <Text style={styles.destination}>{item.destino}</Text>
+                <Text style={styles.destination}>{item.detallesViaje?.destino || 'Destino no disponible'}</Text>
                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.estado) }]}>
                     <Text style={styles.statusText}>{getStatusText(item.estado)}</Text>
                 </View>
@@ -86,7 +104,9 @@ export default function HistoryScreen() {
 
             <View style={styles.paseDetails}>
                 <Text style={styles.detailLabel}>Fecha de viaje:</Text>
-                <Text style={styles.detailValue}>{item.fechaViaje}</Text>
+                <Text style={styles.detailValue}>
+                    {item.detallesViaje ? item.detallesViaje.fechaViaje.toLocaleDateString('es-CL') : 'Fecha no disponible'}
+                </Text>
 
                 <Text style={styles.detailLabel}>Nombre completo:</Text>
                 <Text style={styles.detailValue}>{item.nombreCompleto}</Text>
@@ -94,14 +114,9 @@ export default function HistoryScreen() {
                 <Text style={styles.detailLabel}>RUT:</Text>
                 <Text style={styles.detailValue}>{item.rut}</Text>
 
-                <Text style={styles.detailLabel}>Creado:</Text>
+                <Text style={styles.detailLabel}>Generado el:</Text>
                 <Text style={styles.detailValue}>
                     {item.fechaCreacion.toLocaleDateString('es-CL')} a las {item.fechaCreacion.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-
-                <Text style={styles.detailLabel}>Expira:</Text>
-                <Text style={styles.detailValue}>
-                    {item.fechaExpiracion.toLocaleDateString('es-CL')}
                 </Text>
             </View>
         </Card>
@@ -186,25 +201,29 @@ const styles = StyleSheet.create({
     statusBadge: {
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: 4,
+        borderRadius: 12, // Bordes más redondeados
     },
     statusText: {
         color: '#fff',
-        fontSize: 12,
+        fontSize: 10,
         fontWeight: 'bold',
     },
     paseDetails: {
-        gap: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+        paddingTop: 12,
+        marginTop: 8,
     },
     detailLabel: {
         fontSize: 12,
         color: '#6b7280',
         fontWeight: '600',
+        marginBottom: 2,
     },
     detailValue: {
         fontSize: 14,
         color: '#111827',
-        marginBottom: 8,
+        marginBottom: 10,
     },
     emptyContainer: {
         flex: 1,

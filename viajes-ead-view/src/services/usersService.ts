@@ -8,9 +8,10 @@ import {
     query,
     where,
     setDoc,
-    Timestamp
+    Timestamp,
+    writeBatch
 } from 'firebase/firestore';
-import { auth, db } from '../../config/firebase';
+import { auth, db , firebaseConfig} from '../../config/firebase';
 import { UserData } from '../../contexts/AuthContext';
 import { initializeApp, deleteApp } from 'firebase/app';
 import {
@@ -24,17 +25,7 @@ import {
     reauthenticateWithCredential,
     EmailAuthProvider
 } from 'firebase/auth';
-
-
-const firebaseConfig = {
-    apiKey: "AIzaSyCo_eMk6NrQEqMB757fgU3FpMjLwBhfI9w",
-    authDomain: "viajes-ead.firebaseapp.com",
-    projectId: "viajes-ead",
-    storageBucket: "viajes-ead.firebasestorage.app",
-    messagingSenderId: "211543185187",
-    appId: "1:211543185187:web:16c8dfa8aec492cee1de96",
-    measurementId: "G-DTL2C48CB5"
-};
+import Papa from 'papaparse';
 
 const usersCollectionRef = collection(db, 'users');
 
@@ -264,4 +255,111 @@ export const reactivarUsuario = async (uid: string): Promise<void> => {
         console.error("Error reactivando usuario:", error);
         throw new Error("No se pudo reactivar el usuario.");
     }
+};
+
+export interface CSVRow {
+    nombre: string;
+    apellido: string;
+    rut: string;
+    email: string;
+    carrera: string;
+}
+
+export interface BatchResult {
+    successCount: number;
+    errorCount: number;
+    errors: { row: number; message: string; data: CSVRow }[];
+}
+
+/**
+ * Procesa un archivo CSV para crear usuarios en lote.
+ * @param csvString - El contenido del archivo CSV como un string.
+ * @returns Un objeto con el resultado del proceso.
+ */
+export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchResult> => {
+    const result: BatchResult = {
+        successCount: 0,
+        errorCount: 0,
+        errors: [],
+    };
+
+    // 1. Parsear el CSV
+    const parseResult = Papa.parse<CSVRow>(csvString, {
+        header: true,
+        skipEmptyLines: true,
+    });
+
+    if (parseResult.errors.length > 0) {
+        throw new Error("El archivo CSV tiene un formato incorrecto y no pudo ser leído.");
+    }
+
+    const rows = parseResult.data;
+    const secondaryApp = initializeApp(auth.app.options, 'SecondaryAuthForBatch');
+    const secondaryAuth = getAuth(secondaryApp);
+
+    // 2. Obtener todos los emails existentes para validación de duplicados
+    const usersCollectionRef = collection(db, 'users');
+    const existingUsersSnapshot = await getDocs(usersCollectionRef);
+    const existingEmails = new Set(existingUsersSnapshot.docs.map(doc => doc.data().email));
+
+    // 3. Procesar cada fila
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowIndex = i + 2; // +1 por el índice base 0, +1 por la cabecera
+
+        // Validación básica de formato de email
+        if (!row.email || !/\S+@\S+\.\S+/.test(row.email)) {
+            result.errorCount++;
+            result.errors.push({ row: rowIndex, message: 'Formato de email inválido.', data: row });
+            continue;
+        }
+
+        // Validación de duplicados (en la BD y en el propio archivo)
+        if (existingEmails.has(row.email)) {
+            result.errorCount++;
+            result.errors.push({ row: rowIndex, message: 'El email ya existe en el sistema.', data: row });
+            continue;
+        }
+
+        // Generar contraseña temporal segura
+        const tempPassword = Math.random().toString(36).slice(-8) + "aA1!";
+
+        try {
+            console.log(`[Fila ${rowIndex}] Intentando crear usuario en Auth para ${row.email}...`);
+            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, row.email, tempPassword);
+            const newUid = userCredential.user.uid;
+            console.log(`[Fila ${rowIndex}] Usuario en Auth CREADO con UID: ${newUid}.`);
+
+            const userDocumentData: Omit<UserData, 'uid'> = {
+                nombre: row.nombre || '',
+                apellido: row.apellido || '',
+                rut: row.rut || '',
+                email: row.email,
+                carrera: row.carrera || 'No especificada',
+                role: 'student',
+                activo: true,
+                fechaCreacion: Timestamp.now(),
+            };
+
+            console.log(`[Fila ${rowIndex}] Intentando guardar documento en Firestore...`);
+            await setDoc(doc(db, 'users', newUid), userDocumentData);
+            console.log(`[Fila ${rowIndex}] Documento en Firestore GUARDADO.`);
+
+            result.successCount++;
+            existingEmails.add(row.email);
+
+        } catch (error: any) {
+            result.errorCount++;
+            let message = "Error desconocido al crear el usuario.";
+            if (error.code === 'auth/email-already-in-use') {
+                message = 'El email ya está en uso (conflicto durante la carga).';
+            } else if (error.code === 'auth/weak-password') {
+                message = 'La contraseña generada es débil (error interno).';
+            }
+            result.errors.push({ row: rowIndex, message, data: row });
+        }
+    }
+
+    await deleteApp(secondaryApp);
+    return result;
 };

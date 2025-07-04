@@ -10,17 +10,20 @@ import {
     where,
     Timestamp,
     setDoc,
-    getCountFromServer, orderBy
+    getCountFromServer,
+    orderBy,
+    runTransaction,
+    increment
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { UserData } from '../../contexts/AuthContext';
 import { encryptQRData, generateQRTimestamp, QRData } from './encryption';
-import { obtenerConfiguracionViaje } from './configuracionService'; // Importamos el servicio de config
+import { obtenerViajeActivo  } from './configuracionService';
 
 export interface Pase {
     id?: string;
     estudianteId: string;
-    fechaViaje: string; // Formato DD/MM/YYYY
+    fechaViaje: string;
     destino: string;
     estado: 'activo' | 'usado' | 'expirado';
     qrData: string;
@@ -28,77 +31,111 @@ export interface Pase {
     fechaExpiracion: Date;
     nombreCompleto: string;
     rut: string;
+    scanCount?: number;
 }
 
-export const crearPase = async (
-    userData: UserData,
-): Promise<string> => {
-    // 1. Obtener la configuración actual del viaje
-    const config = await obtenerConfiguracionViaje();
-    if (!config.destino || !config.fechaViaje || !config.capacidadMaxima) {
-        throw new Error('El viaje no ha sido configurado por un administrador.');
+export const crearPase = async (userData: UserData): Promise<string> => {
+    const viajeActivo = await obtenerViajeActivo();
+    if (!viajeActivo) {
+        throw new Error('No hay ningún viaje programado o abierto para reservas en este momento.');
     }
 
-    // 2. Verificar si quedan cupos disponibles
-    const pasesCollectionRef = collection(db, 'pases');
-    const fechaViajeString = config.fechaViaje.toLocaleDateString('es-CL');
-    const q = query(pasesCollectionRef, where("fechaViaje", "==", fechaViajeString));
-    const snapshot = await getCountFromServer(q);
-    const pasesCreados = snapshot.data().count;
-
-    if (pasesCreados >= config.capacidadMaxima) {
-        throw new Error('Lo sentimos, ya no quedan cupos disponibles para este viaje.');
-    }
-
-    // 3. Verificar que el perfil del estudiante esté completo
     if (!userData.nombre || !userData.apellido || !userData.rut || !userData.carrera) {
         throw new Error('Tu información de perfil está incompleta. Revisa tus datos.');
     }
 
-    // 4. Continuar con la creación del pase si hay cupos
     try {
-        const { timestamp, expires } = generateQRTimestamp();
+        const nuevoPaseId = await runTransaction(db, async (transaction) => {
+            const viajeRef = doc(db, 'viajes', viajeActivo.id);
+            const viajeDoc = await transaction.get(viajeRef);
 
-        // Creamos el documento con un ID autogenerado primero
-        const paseDocRef = doc(collection(db, 'pases'));
-        const paseId = paseDocRef.id;
+            if (!viajeDoc.exists()) {
+                throw new Error("El documento del viaje no fue encontrado.");
+            }
 
-        const dataToEncrypt: QRData = {
-            paseId: paseId,
-            estudianteId: userData.uid,
-            nombre: userData.nombre,
-            apellido: userData.apellido,
-            rut: userData.rut!,
-            carrera: userData.carrera!,
-            fechaViaje: fechaViajeString,
-            destino: config.destino,
-            timestamp,
-            expires,
-        };
-        const encryptedQRData = encryptQRData(dataToEncrypt);
+            const pasesCreados = viajeDoc.data().pasesGenerados || 0;
+            if (pasesCreados >= viajeActivo.capacidadMaxima) {
+                throw new Error('Lo sentimos, ya no quedan cupos disponibles para este viaje.');
+            }
 
-        const fechaExpiracionPase = new Date(config.fechaViaje);
-        fechaExpiracionPase.setHours(23, 59, 59);
+            const paseDocRef = doc(collection(db, 'pases')); // Genera un ID para el nuevo pase
 
-        const nuevoPase = {
-            estudianteId: userData.uid,
-            fechaViaje: fechaViajeString,
-            destino: config.destino,
-            estado: 'activo' as const,
-            qrData: encryptedQRData,
-            fechaCreacion: Timestamp.now(),
-            fechaExpiracion: Timestamp.fromDate(fechaExpiracionPase),
-            nombreCompleto: `${userData.nombre} ${userData.apellido}`,
-            rut: userData.rut
-        };
 
-        await setDoc(paseDocRef, nuevoPase);
+            const nuevoPase = {
+                viajeId: viajeActivo.id,
+                estudianteId: userData.uid,
+                nombreCompleto: `${userData.nombre} ${userData.apellido}`,
+                rut: userData.rut,
+                estado: 'activo' as const,
+                qrData: "...", // Tu QR encriptado
+                fechaCreacion: Timestamp.now(),
+                scanCount: 0
+            };
 
-        return paseId;
+            transaction.set(paseDocRef, nuevoPase);
+            transaction.update(viajeRef, { pasesGenerados: increment(1) });
+
+            return paseDocRef.id;
+        });
+
+        return nuevoPaseId;
+
     } catch (error) {
-        console.error('Error al crear el pase:', error);
+        console.error('Error en la transacción al crear el pase:', error);
         if (error instanceof Error) throw error;
         throw new Error('No se pudo crear el pase.');
+    }
+};
+
+/**
+ * Valida un pase, verifica el límite de escaneos y actualiza su estado de forma atómica.
+ * @param paseId - El ID del pase a validar.
+ * @returns Un objeto con el resultado de la validación.
+ */
+export const validarPaseConteo = async (paseId: string): Promise<{ success: boolean; message: string; pase?: Pase }> => {
+    if (!paseId) {
+        return { success: false, message: "ID de pase no proporcionado." };
+    }
+
+    try {
+        const paseRef = doc(db, 'pases', paseId);
+
+        const resultado = await runTransaction(db, async (transaction) => {
+            const paseDoc = await transaction.get(paseRef);
+
+            if (!paseDoc.exists()) {
+                throw new Error("Pase no encontrado.");
+            }
+
+            const paseData = paseDoc.data() as Pase;
+
+            if ((paseData.scanCount || 0) >= 2) {
+                throw new Error("Este pase ya ha alcanzado el límite de 2 escaneos.");
+            }
+
+            if (paseData.estado === 'usado' || paseData.estado === 'expirado') {
+                throw new Error(`Este pase ya fue ${paseData.estado}.`);
+            }
+
+            transaction.update(paseRef, {
+                estado: 'usado' as const,
+                scanCount: increment(1)
+            });
+
+            return {
+                ...paseData,
+                id: paseDoc.id,
+                estado: 'usado' as const,
+                scanCount: (paseData.scanCount || 0) + 1,
+            };
+        });
+
+        return { success: true, message: "Pase validado exitosamente.", pase: resultado };
+
+    } catch (error) {
+        console.error("Error en la validación del pase:", error);
+        const message = error instanceof Error ? error.message : "Ocurrió un error inesperado al validar.";
+        return { success: false, message };
     }
 };
 
@@ -121,7 +158,7 @@ export const obtenerPasePorId = async (paseId: string): Promise<Pase | null> => 
                 estudianteId: data.estudianteId,
                 fechaViaje: data.fechaViaje,
                 destino: data.destino,
-                estado: data.estado,
+                estado: data.estado as 'activo' | 'usado' | 'expirado',
                 qrData: data.qrData,
                 fechaCreacion: data.fechaCreacion.toDate(),
                 fechaExpiracion: data.fechaExpiracion.toDate(),
@@ -176,7 +213,7 @@ export const obtenerPasesEstudiante = async (estudianteId: string): Promise<Pase
                 estudianteId: data.estudianteId,
                 fechaViaje: data.fechaViaje,
                 destino: data.destino,
-                estado: data.estado,
+                estado: data.estado as 'activo' | 'usado' | 'expirado',
                 qrData: data.qrData,
                 fechaCreacion: data.fechaCreacion.toDate(),
                 fechaExpiracion: data.fechaExpiracion.toDate(),

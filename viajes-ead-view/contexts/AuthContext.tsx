@@ -1,4 +1,3 @@
-// src/contexts/AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import {
     onAuthStateChanged,
@@ -7,9 +6,9 @@ import {
     signOut,
     createUserWithEmailAndPassword, UserCredential
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '.././config/firebase'; //
-import { useRouter, useSegments } from 'expo-router';
+import {doc, getDoc, setDoc, Timestamp} from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
+import { Alert } from 'react-native';
 
 export interface UserData {
     uid: string;
@@ -20,6 +19,7 @@ export interface UserData {
     rut?: string;
     carrera?: string;
     activo: boolean;
+    fechaCreacion: Timestamp;
 }
 
 interface AuthContextType {
@@ -27,9 +27,7 @@ interface AuthContextType {
     userData: UserData | null;
     loading: boolean;
     login: (email: string, password: string) => Promise<UserCredential>;
-    register: (email: string, password: string, userData: Partial<UserData>) => Promise<UserCredential>;
     logout: () => Promise<void>;
-    updateUserData: (data: Partial<UserData>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,111 +45,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [userData, setUserData] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const router = useRouter();
-    const segments = useSegments();
-
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-            setLoading(true);
-
             if (currentUser) {
-                setUser(currentUser);
-                await fetchUserData(currentUser.uid);
+                await fetchUserData(currentUser);
             } else {
                 setUser(null);
                 setUserData(null);
             }
-
             setLoading(false);
         });
-
         return () => unsubscribe();
     }, []);
 
-    // Gestión de navegación automática
-    useEffect(() => {
-        if (loading) return;
-
-        const inAuthGroup = segments[0] === '(auth)';
-        const inProtectedGroup = segments[0] === '(student)' || segments[0] === '(validator)';
-
-        if (user && userData && !inProtectedGroup) {
-            if (userData.role === 'student') {
-                router.replace('/(student)');
-            } else if (userData.role === 'validator' || userData.role === 'admin') {
-                router.replace('/(validator)/scanner');
-            }
-        } else if (!user && inProtectedGroup) {
-            router.replace('/(auth)/login');
-        }
-    }, [user, userData, loading, segments]);
-
-    const fetchUserData = async (uid: string) => {
+    const fetchUserData = async (currentUser: User) => {
         try {
-            const userDocRef = doc(db, 'users', uid);
+            const userDocRef = doc(db, 'users', currentUser.uid);
             const userDocSnap = await getDoc(userDocRef);
 
-            if (userDocSnap.exists()) {
-                const fetchedData = {
-                    uid: userDocSnap.id,
-                    ...userDocSnap.data()
-                } as UserData;
-                setUserData(fetchedData);
+            if (userDocSnap.exists() && userDocSnap.data().activo) {
+                setUser(currentUser);
+                setUserData({ uid: currentUser.uid, ...userDocSnap.data() } as UserData);
             } else {
-                console.warn("Documento de usuario no encontrado en Firestore");
-                setUserData(null);
+                if(userDocSnap.exists() && !userDocSnap.data().activo) {
+                    Alert.alert("Cuenta Desactivada", "Tu cuenta ha sido desactivada por un administrador.");
+                }
+                await signOut(auth);
             }
         } catch (error) {
             console.error("Error fetching user data:", error);
-            setUserData(null);
+            await signOut(auth);
         }
     };
 
-    const login = async (email: string, password: string) => {
+    const login = (email: string, password: string) => {
         return signInWithEmailAndPassword(auth, email, password);
     };
 
-    const register = async (email: string, password: string, additionalData: Partial<UserData>) => {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-
-        const newUserData: UserData = {
-            uid: result.user.uid,
-            email: result.user.email!,
-            role: additionalData.role || 'student',
-            nombre: additionalData.nombre || '',
-            apellido: additionalData.apellido || '',
-            rut: additionalData.rut,
-            carrera: additionalData.carrera,
-            activo: true
-        };
-
-        await setDoc(doc(db, 'users', result.user.uid), {
-            ...newUserData,
-            fechaCreacion: new Date()
-        });
-
-        return result;
-    };
-
-    const updateUserData = async (data: Partial<UserData>) => {
-        if (!user) throw new Error('No user logged in');
-        await setDoc(doc(db, 'users', user.uid), data, { merge: true });
-        await fetchUserData(user.uid);
-    };
-
     const logout = async () => {
-        await signOut(auth);
+        try {
+            await signOut(auth);
+        } catch (error) {
+            console.error("Error signing out:", error);
+            Alert.alert("Error", "No se pudo cerrar la sesión.");
+        }
     };
 
-    const value = {
-        user,
-        userData,
-        loading,
-        login,
-        register,
-        logout,
-        updateUserData,
-    };
+    const value = { user, userData, loading, login, logout };
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={value}>
+            {children}
+        </AuthContext.Provider>
+    );
 }

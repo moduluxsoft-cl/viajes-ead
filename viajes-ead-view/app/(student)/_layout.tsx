@@ -1,24 +1,25 @@
-import { Stack } from 'expo-router';
+import { Stack, Redirect } from 'expo-router';
 import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { Redirect } from 'expo-router';
+import {LoadingSpinner} from "@/components/ui/LoadingSpinner";
+import {useAuth} from "@/contexts/AuthContext";
+
 
 export default function StudentLayout() {
-    const { userData, loading } = useAuth();
+    const { loading, userData } = useAuth();
 
-    if (loading) return null;
-
-    if (!userData || userData.role !== 'student') {
+    // If the user is not authenticated or not a student, redirect to login.
+    if (!loading && (!userData || userData.role !== 'student')) {
         return <Redirect href="/(auth)/login" />;
     }
 
+    // While checking, show a loading screen
+    if (loading) {
+        return <LoadingSpinner message="Cargando..." />;
+    }
+
+    // If authenticated and is a student, show the student screens.
     return (
-        <Stack
-            screenOptions={{
-                headerShown: false,
-                animation: 'slide_from_right',
-            }}
-        >
+        <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="history" />
         </Stack>

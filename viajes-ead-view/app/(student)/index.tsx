@@ -1,5 +1,5 @@
 // app/(student)/index.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -16,130 +16,80 @@ import { QRGenerator } from '../../components/QRGenerator';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import { obtenerPasesEstudiante, Pase } from '../../src/services/pasesService';
-import { obtenerConfiguracionViaje } from '../../src/services/configuracionService';
+import {
+    obtenerPasesEstudiante,
+    Pase,
+    obtenerViajeActivo,
+    Viaje
+} from '../../src/services/viajesService';
 
 export default function StudentHomeScreen() {
     const { userData, logout, loading: authLoading } = useAuth();
+
+    // Estados para manejar la información del viaje y del pase del usuario
+    const [viajeActivo, setViajeActivo] = useState<Viaje | null>(null);
     const [currentPase, setCurrentPase] = useState<Pase | null>(null);
+
     const [showCreateForm, setShowCreateForm] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [configError, setConfigError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (!authLoading && userData?.uid) {
-            loadActivePase();
-            checkConfiguration();
-        }
-    }, [authLoading, userData?.uid]);
-
-    const checkConfiguration = async () => {
-        try {
-            const config = await obtenerConfiguracionViaje();
-
-            if (!config.destino || !config.fechaViaje || !config.capacidadMaxima) {
-                setConfigError('La configuración del viaje está incompleta. Contacta al administrador.');
-                return;
-            }
-
-            // Verificar si la fecha del viaje es válida
-            const fechaViaje = new Date(config.fechaViaje);
-            const hoy = new Date();
-            hoy.setHours(0, 0, 0, 0);
-
-            if (fechaViaje < hoy) {
-                setConfigError('La fecha del viaje ya ha pasado.');
-                return;
-            }
-
-            setConfigError(null);
-        } catch (error) {
-            console.error('Error verificando configuración:', error);
-            setConfigError('No se pudo verificar la configuración del viaje.');
-        }
-    };
-
-    const loadActivePase = async () => {
-        if (!userData?.uid) {
-            console.warn('loadActivePase: No se puede ejecutar porque userData.uid no está disponible.');
-            return;
-        }
+    const loadInitialData = useCallback(async () => {
+        if (!userData?.uid) return;
 
         setLoading(true);
         setError(null);
+        setViajeActivo(null);
+        setCurrentPase(null);
 
         try {
+            // 1. Primero, obtenemos el viaje activo. Es el dato principal.
+            const viaje = await obtenerViajeActivo();
+            setViajeActivo(viaje);
+
+            // Si no hay viaje, no tiene sentido continuar.
+            if (!viaje) {
+                setError('Actualmente no hay ningún viaje programado. Inténtalo más tarde.');
+                setLoading(false);
+                return;
+            }
+
+            // 2. Si hay un viaje, buscamos los pases del estudiante.
             const pases = await obtenerPasesEstudiante(userData.uid);
-            console.log(`loadActivePase: Se encontraron ${pases.length} pases en total para el usuario.`);
 
-            // Buscar el pase activo
-            const activePase = pases.find((pase: Pase) => pase.estado === 'activo');
+            // 3. Buscamos un pase activo que corresponda al ID del viaje activo.
+            const paseActivoParaViajeActual = pases.find(p => p.estado === 'activo' && p.viajeId === viaje.id);
+            setCurrentPase(paseActivoParaViajeActual || null);
 
-            if (activePase) {
-                console.log(`¡Éxito! Pase activo encontrado con ID: ${activePase.id}. Se mostrará el QR.`);
-                setCurrentPase(activePase);
-            } else {
-                console.log('No se encontró ningún pase con estado "activo".');
-                setCurrentPase(null);
-            }
-        } catch (error) {
-            console.error('Error en loadActivePase:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-            setError(`No se pudieron cargar los pases: ${errorMessage}`);
-
-            // Solo mostrar alert si es un error grave
-            if (errorMessage.includes('permission-denied') || errorMessage.includes('unauthenticated')) {
-                Alert.alert('Error de autenticación', 'Por favor, cierra sesión e inicia sesión nuevamente.');
-            }
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error inesperado.';
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
-    };
+    }, [userData?.uid]);
+
+    useEffect(() => {
+        if (!authLoading && userData?.uid) {
+            loadInitialData();
+        }
+    }, [authLoading, userData?.uid, loadInitialData]);
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await Promise.all([
-            loadActivePase(),
-            checkConfiguration()
-        ]);
+        await loadInitialData();
         setRefreshing(false);
     };
 
-    const handlePaseCreado = async (paseId: string) => {
-        console.log(`handlePaseCreado: El pase con ID ${paseId} fue creado. Ahora se intentará recargar.`);
+    const handlePaseCreado = async () => {
         setShowCreateForm(false);
-        await loadActivePase();
+        await loadInitialData(); // Recarga toda la información
     };
 
-    const handleLogout = async () => {
-        Alert.alert(
-            'Cerrar Sesión',
-            '¿Estás seguro de que quieres cerrar sesión?',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                { text: 'Cerrar Sesión', onPress: logout, style: 'destructive' }
-            ]
-        );
-    };
-
-    const formatFechaViaje = (fechaString: string) => {
-        try {
-            // Si ya está en formato DD/MM/YYYY, lo devolvemos tal como está
-            if (fechaString.includes('/')) return fechaString;
-
-            // Si viene en otro formato, intentamos convertirlo
-            const fecha = new Date(fechaString);
-            return fecha.toLocaleDateString('es-CL');
-        } catch {
-            return fechaString;
-        }
-    };
-
-    // Loading state mientras se autentica
-    if (authLoading) {
-        return <LoadingSpinner message="Cargando..." />;
+    // Muestra un spinner mientras se autentica o se cargan los datos por primera vez
+    if (authLoading || (loading && !refreshing)) {
+        return <LoadingSpinner message="Cargando tu información..." />;
     }
 
     return (
@@ -147,89 +97,51 @@ export default function StudentHomeScreen() {
             <SafeAreaView style={styles.container}>
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                    }
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 >
                     <View style={styles.header}>
-                        <Text style={styles.welcomeText}>
-                            Bienvenido/a, {userData?.nombre}
-                        </Text>
-                        <Button
-                            title="Cerrar Sesión"
-                            onPress={handleLogout}
-                            style={styles.logoutButton}
-                        />
+                        <Text style={styles.welcomeText}>Bienvenido/a, {userData?.nombre}</Text>
+                        <Button title="Cerrar Sesión" onPress={logout} style={styles.logoutButton} />
                     </View>
 
-                    {/* Mostrar error de configuración si existe */}
-                    {configError && (
-                        <Card style={styles.warningCard}>
-                            <Text style={styles.warningTitle}>Aviso</Text>
-                            <Text style={styles.warningText}>{configError}</Text>
-                        </Card>
+                    {/* Muestra un error solo si no hay un viaje activo */}
+                    {error && !viajeActivo && (
+                        <Card style={styles.warningCard}><Text style={styles.warningText}>{error}</Text></Card>
                     )}
 
-                    {/* Mostrar error si existe */}
-                    {error && (
-                        <Card style={styles.errorCard}>
-                            <Text style={styles.errorText}>{error}</Text>
-                            <Button
-                                title="Reintentar"
-                                onPress={loadActivePase}
-                                style={styles.retryButton}
-                                textStyle={styles.retryButtonText}
-                            />
-                        </Card>
-                    )}
+                    {/* --- LÓGICA DE VISUALIZACIÓN --- */}
 
-
-                    {loading && !refreshing && (
-                        <LoadingSpinner message="Cargando tus pases..." />
-                    )}
-
-
-                    {!loading && currentPase && (
+                    {/* Caso 1: El usuario tiene un pase activo para el viaje actual */}
+                    {currentPase && viajeActivo ? (
                         <Card style={styles.qrCard}>
                             <Text style={styles.cardTitle}>Tu Pase Actual</Text>
                             <QRGenerator data={currentPase.qrData} size={200} />
                             <View style={styles.paseDetails}>
                                 <Text style={styles.detailLabel}>Destino:</Text>
-                                <Text style={styles.detailValue}>{currentPase.destino}</Text>
+                                <Text style={styles.detailValue}>{viajeActivo.destino}</Text>
                                 <Text style={styles.detailLabel}>Fecha de Viaje:</Text>
-                                <Text style={styles.detailValue}>{formatFechaViaje(currentPase.fechaViaje)}</Text>
+                                <Text style={styles.detailValue}>{viajeActivo.fechaViaje.toLocaleDateString('es-CL')}</Text>
                                 <Text style={styles.detailLabel}>Estado:</Text>
-                                <Text style={[styles.detailValue, styles.statusActive]}>
-                                    {currentPase.estado.toUpperCase()}
-                                </Text>
+                                <Text style={[styles.detailValue, styles.statusActive]}>{currentPase.estado.toUpperCase()}</Text>
                             </View>
                         </Card>
-                    )}
-
-                    {!loading && !currentPase && (
+                    ) : (
                         <>
+                            {/* Caso 2: El usuario no tiene pase, se le muestra el formulario de creación */}
                             {showCreateForm ? (
-                                <CrearPaseForm
-                                    onPaseCreado={handlePaseCreado}
-                                    onCancel={() => setShowCreateForm(false)}
-                                />
+                                <CrearPaseForm onPaseCreado={handlePaseCreado} onCancel={() => setShowCreateForm(false)} />
                             ) : (
+                                /* Caso 3: El usuario no tiene pase y no está en el formulario, se le muestra el botón para crear */
                                 <Card style={styles.emptyCard}>
                                     <Text style={styles.emptyTitle}>No tienes pases activos</Text>
-                                    <Text style={styles.emptySubtitle}>
-                                        Crea un nuevo pase de viaje para generar tu código QR
-                                    </Text>
+                                    <Text style={styles.emptySubtitle}>Crea un nuevo pase para generar tu código QR</Text>
                                     <Button
                                         title="Crear Nuevo Pase"
                                         onPress={() => setShowCreateForm(true)}
-                                        style={[styles.createButton, configError && styles.disabledButton]}
-                                        disabled={!!configError}
+                                        style={[styles.createButton, !viajeActivo && styles.disabledButton]}
+                                        disabled={!viajeActivo}
                                     />
-                                    {configError && (
-                                        <Text style={styles.disabledText}>
-                                            No se pueden crear pases en este momento
-                                        </Text>
-                                    )}
+                                    {!viajeActivo && <Text style={styles.disabledText}>La creación de pases está desactivada</Text>}
                                 </Card>
                             )}
                         </>
@@ -273,13 +185,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
     },
-    errorCard: {
-        backgroundColor: '#fee2e2',
-        borderColor: '#fca5a5',
-        borderWidth: 1,
-        marginBottom: 20,
-        padding: 16,
-    },
     warningCard: {
         backgroundColor: '#fef3cd',
         borderColor: '#fbbf24',
@@ -287,32 +192,11 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         padding: 16,
     },
-    warningTitle: {
-        color: '#92400e',
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 8,
-        textAlign: 'center',
-    },
     warningText: {
         color: '#92400e',
         fontSize: 14,
         textAlign: 'center',
         lineHeight: 20,
-    },
-    errorText: {
-        color: '#dc2626',
-        fontSize: 14,
-        marginBottom: 12,
-        textAlign: 'center',
-    },
-    retryButton: {
-        backgroundColor: '#dc2626',
-        paddingVertical: 8,
-    },
-    retryButtonText: {
-        color: '#fff',
-        fontSize: 14,
     },
     qrCard: { alignItems: 'center', marginBottom: 20 },
     emptyCard: { alignItems: 'center', marginBottom: 20, padding: 32 },

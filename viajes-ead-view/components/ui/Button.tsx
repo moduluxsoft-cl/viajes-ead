@@ -16,7 +16,7 @@ interface ButtonProps {
     disabled?: boolean;
     style?: StyleProp<ViewStyle>;
     textStyle?: StyleProp<TextStyle>;
-    variant?: 'primary' | 'secondary' | 'danger';
+    variant?: 'primary' | 'secondary' | 'danger' | 'outline';
 }
 
 export const Button: React.FC<ButtonProps> = ({

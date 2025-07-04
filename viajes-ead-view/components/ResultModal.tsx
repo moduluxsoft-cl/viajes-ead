@@ -1,43 +1,39 @@
 import React from 'react';
-import { View, Text, Modal, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Modal, StyleSheet, ScrollView } from 'react-native';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
-import { QRData } from '../src/services/encryption';
+// Importamos las interfaces que necesitamos desde el servicio
+import { Pase, Viaje } from '../src/services/viajesService';
 
-interface ResultModalProps {
-    visible: boolean;
+// 1. Definimos el tipo para el objeto scanResult que viene del scanner
+type ScanResult = {
     success: boolean;
-    data?: QRData;
+    pase?: Pase;
+    viaje?: Viaje;
     error?: string;
     message?: string;
+};
+
+// 2. Actualizamos las props del Modal para que acepte el objeto scanResult
+interface ResultModalProps {
+    visible: boolean;
     onClose: () => void;
-    onValidate?: () => void;
-    validating?: boolean; // Prop para el estado de carga del botón
-    showValidateButton?: boolean;
+    onValidate: () => void;
+    validating: boolean;
+    scanResult: ScanResult;
+    showValidateButton: boolean;
 }
 
 export const ResultModal: React.FC<ResultModalProps> = ({
                                                             visible,
-                                                            success,
-                                                            data,
-                                                            error,
-                                                            message, // Se añade a la desestructuración
                                                             onClose,
                                                             onValidate,
-                                                            validating = false, // Se añade a la desestructuración
-                                                            showValidateButton = false
+                                                            validating,
+                                                            scanResult,
+                                                            showValidateButton,
                                                         }) => {
-    const formatDate = (dateString: string) => {
-        try {
-            return new Date(dateString).toLocaleDateString('es-CL');
-        } catch {
-            return dateString;
-        }
-    };
-
-    const formatTimestamp = (timestamp: number) => {
-        return new Date(timestamp).toLocaleString('es-CL');
-    };
+    // 3. Desestructuramos las propiedades desde el objeto scanResult
+    const { success, pase, viaje, error, message } = scanResult;
 
     const modalTitle = message ? 'Resultado de Validación' : (success ? 'Pase Válido' : 'Pase Inválido');
 
@@ -51,29 +47,28 @@ export const ResultModal: React.FC<ResultModalProps> = ({
             <View style={styles.overlay}>
                 <Card style={styles.modal}>
                     <ScrollView showsVerticalScrollIndicator={false}>
-                        <View style={[
-                            styles.iconContainer,
-                            success ? styles.successBg : styles.errorBg
-                        ]}>
-                            <Text style={styles.icon}>
-                                {success ? '✓' : '✗'}
-                            </Text>
+                        <View style={[styles.iconContainer, success ? styles.successBg : styles.errorBg]}>
+                            <Text style={styles.icon}>{success ? '✓' : '✗'}</Text>
                         </View>
 
                         <Text style={styles.title}>{modalTitle}</Text>
 
+                        {/* Si hay un mensaje final (ej: "Pase validado"), lo mostramos */}
                         {message && (
                             <Text style={styles.successMessage}>{message}</Text>
                         )}
 
-                        {success && data ? (
+                        {/* Si el escaneo inicial fue exitoso, mostramos los detalles del pase y el viaje */}
+                        {success && pase && viaje ? (
                             <View style={styles.details}>
-                                <DetailRow label="Estudiante" value={`${data.nombre} ${data.apellido}`} />
-                                <DetailRow label="RUT" value={data.rut} />
-                                <DetailRow label="Carrera" value={data.carrera} />
-                                <DetailRow label="Fecha de Viaje" value={data.fechaViaje} />
+                                <DetailRow label="Estudiante" value={pase.nombreCompleto} />
+                                <DetailRow label="RUT" value={pase.rut} />
+                                <DetailRow label="Destino del Viaje" value={viaje.destino} />
+                                <DetailRow label="Fecha del Viaje" value={viaje.fechaViaje.toLocaleDateString('es-CL')} />
+                                <DetailRow label="Estado Actual" value={pase.estado.toUpperCase()} />
                             </View>
                         ) : (
+                            // Si no fue exitoso y no hay mensaje final, mostramos el error
                             !message && (
                                 <Text style={styles.errorMessage}>
                                     {error || 'Código QR inválido o expirado'}
@@ -82,11 +77,12 @@ export const ResultModal: React.FC<ResultModalProps> = ({
                         )}
 
                         <View style={styles.buttonContainer}>
-                            {success && showValidateButton && onValidate && (
+                            {/* El botón de validar se muestra si el escaneo fue exitoso y no hay un mensaje final */}
+                            {success && showValidateButton && (
                                 <Button
-                                    title="Validar Pase"
+                                    title="Confirmar Validación"
                                     onPress={onValidate}
-                                    loading={validating} // Se usa la prop 'validating'
+                                    loading={validating}
                                     style={[styles.button, styles.validateButton]}
                                 />
                             )}
@@ -103,12 +99,8 @@ export const ResultModal: React.FC<ResultModalProps> = ({
     );
 };
 
-interface DetailRowProps {
-    label: string;
-    value: string;
-}
-
-const DetailRow: React.FC<DetailRowProps> = ({ label, value }) => (
+// Componente auxiliar para mostrar las filas de detalles (sin cambios)
+const DetailRow: React.FC<{ label: string; value: string; }> = ({ label, value }) => (
     <View style={styles.detailRow}>
         <Text style={styles.label}>{label}:</Text>
         <Text style={styles.value}>{value}</Text>
@@ -208,4 +200,3 @@ const styles = StyleSheet.create({
         backgroundColor: '#6b7280',
     },
 });
-

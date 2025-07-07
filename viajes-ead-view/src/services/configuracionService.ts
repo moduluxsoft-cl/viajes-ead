@@ -61,26 +61,6 @@ const parseSpanishDate = (dateString: string): Date | null => {
 
 const propertiesCollectionRef = collection(db, 'properties');
 
-export const obtenerViajeActivo = async (): Promise<ConfiguracionViaje & { id: string } | null> => {
-    const viajesRef = collection(db, 'viajes');
-    const q = query(viajesRef, where("estado", "==", "abierto"), limit(1));
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-        console.log("No se encontró ningún viaje activo.");
-        return null;
-    }
-
-    const doc = snapshot.docs[0];
-    const data = doc.data();
-    return {
-        id: doc.id,
-        destino: data.destino,
-        fechaViaje: data.fechaViaje.toDate(),
-        capacidadMaxima: data.capacidadMaxima
-    };
-};
-
 export const guardarConfiguracionViaje = async (config: Partial<ConfiguracionViaje>): Promise<void> => {
     try {
         const batch = writeBatch(db);

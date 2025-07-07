@@ -20,6 +20,7 @@ import { db } from '../../config/firebase';
 import { UserData } from '../../contexts/AuthContext';
 import { encryptQRData, QRData } from './encryption';
 
+// ... (Interfaces Viaje y Pase no cambian)
 export interface Viaje {
     id: string;
     destino: string;
@@ -41,12 +42,12 @@ export interface Pase {
     scanCount: number;
 }
 
-
 /**
  * Obtiene el viaje que está actualmente abierto para reservas.
  * TRADUCE: Lee desde Firestore (MAYÚSCULAS) y devuelve para la App (minúsculas).
  */
 export const obtenerViajeActivo = async (): Promise<Viaje | null> => {
+    // ... (sin cambios en esta función)
     const viajesRef = collection(db, 'viajes');
     const q = query(viajesRef, where("STATE", "==", "ABIERTO"), limit(1));
     const snapshot = await getDocs(q);
@@ -68,38 +69,83 @@ export const obtenerViajeActivo = async (): Promise<Viaje | null> => {
 };
 
 /**
- * Sobrescribe el viaje activo actual.
- * TRADUCE: Recibe de la App (minúsculas) y escribe en Firestore (MAYÚSCULAS).
+ * Crea siempre un nuevo viaje activo y cancela los anteriores.
+ * Incluye logs detallados para depurar errores de batch.
  */
-export const sobrescribirViajeActivo = async (config: Omit<Viaje, 'id' | 'pasesGenerados' | 'estado'>): Promise<void> => {
-    const batch = writeBatch(db);
-    const viajesRef = collection(db, 'viajes');
+export const sobrescribirViajeActivo = async (
+    config: { destino: string; fechaViaje: Date; capacidadMaxima: number }
+) => {
+    console.log("🟡 [viajesService]  ➡️  sobrescribirViajeActivo()", config);
 
-    const q = query(viajesRef, where("STATE", "==", "ABIERTO"));
-    const snapshot = await getDocs(q);
-    snapshot.forEach(document => {
-        batch.update(document.ref, { STATE: 'CANCELADO' });
+    /* ---------- 0. VALIDACIONES RÁPIDAS ---------- */
+    if (!config.destino || !config.fechaViaje || config.capacidadMaxima == null) {
+        console.error("🔴 Datos incompletos", config);
+        throw new Error("Datos de configuración incompletos.");
+    }
+
+    /* ---------- 1. CANCELAR VIAJES ABIERTOS ---------- */
+    const abiertos = await getDocs(
+        query(collection(db, "viajes"), where("STATE", "==", "ABIERTO"))
+    );
+    console.log(`🟠 Viajes ABIERTO encontrados: ${abiertos.size}`);
+
+    const batchCancel = writeBatch(db);
+    abiertos.forEach((snap) => {
+        console.log("   ⤷ Marcando CANCELADO:", snap.id);
+        batchCancel.update(snap.ref, { STATE: "CANCELADO" });
     });
 
-    const viajeId = `viaje_${config.fechaViaje.toISOString().split('T')[0]}`;
-    const nuevoViajeRef = doc(db, 'viajes', viajeId);
+    try {
+        if (!abiertos.empty) {
+            console.log("🟠 Commit batchCancel…");
+            await batchCancel.commit();
+            console.log("🟢 batchCancel OK");
+        }
+    } catch (err: any) {
+        console.error("🔴 batchCancel ERROR", err.code, err.message);
+        throw err;
+    }
 
-    const nuevoViajeData = {
+    /* ---------- 2. CREAR NUEVO VIAJE ---------- */
+    const baseId = `viaje_${config.fechaViaje.toISOString().substring(0, 10)}`;
+    let viajeId = baseId;
+    let viajeRef = doc(db, "viajes", viajeId);
+
+    if ((await getDoc(viajeRef)).exists()) {
+        const rnd = Math.floor(1000 + Math.random() * 9000);
+        viajeId = `${baseId}_${rnd}`;
+        viajeRef = doc(db, "viajes", viajeId);
+        console.log(`⚠️  Colisión de ID. Usaré ${viajeId}`);
+    }
+
+    const data = {
         DESTINATION: config.destino,
-        MAX_CAPACITY: config.capacidadMaxima,
+        MAX_CAPACITY: Number(config.capacidadMaxima),
         DATE_TRAVEL: Timestamp.fromDate(config.fechaViaje),
         GENERATED_PASSES: 0,
-        STATE: 'ABIERTO',
+        STATE: "ABIERTO",
     };
 
-    batch.set(nuevoViajeRef, nuevoViajeData);
-    await batch.commit();
+    const batchCreate = writeBatch(db);
+    batchCreate.set(viajeRef, data);
+
+    try {
+        console.log("🟠 Commit batchCreate…", { id: viajeId, ...data });
+        await batchCreate.commit();
+        console.log("🟢 batchCreate OK. Nuevo viaje activo:", viajeId);
+    } catch (err: any) {
+        console.error(
+            "🔴 batchCreate ERROR",
+            { code: err.code, message: err.message },
+            err
+        );
+        throw err;
+    }
 };
 
-/**
- * Valida un pase y actualiza su contador de escaneos.
- * (La colección 'pases' usa minúsculas, por lo que no necesita traducción aquí).
- */
+
+
+
 export const validarPaseConteo = async (paseId: string): Promise<{ success: boolean; message: string; pase?: Pase }> => {
     const paseRef = doc(db, 'pases', paseId);
     try {

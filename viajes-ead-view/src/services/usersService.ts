@@ -26,6 +26,7 @@ import {
     EmailAuthProvider
 } from 'firebase/auth';
 import Papa from 'papaparse';
+import {getFunctions, httpsCallable} from "@firebase/functions";
 
 const usersCollectionRef = collection(db, 'users');
 
@@ -164,17 +165,19 @@ export const eliminarUsuarioCompleto = async (uid: string): Promise<void> => {
  */
 export const eliminarUsuarioComoAdmin = async (uid: string): Promise<void> => {
     try {
-        // Eliminar de Firestore
-        const userDocRef = doc(db, 'users', uid);
-        await deleteDoc(userDocRef);
-
-        // Llamar a Cloud Function para eliminar de Auth faltaaaaa
+        const functions = getFunctions();
 
 
-        console.log("Usuario eliminado de Firestore. Para eliminación completa, implementa una Cloud Function.");
-    } catch (error) {
-        console.error("Error eliminando usuario:", error);
-        throw new Error("No se pudo eliminar el usuario.");
+        const deleteUserFunction = httpsCallable(functions, 'deleteUser');
+
+        console.log(`Enviando solicitud para eliminar al usuario: ${uid}`);
+        await deleteUserFunction({ uid: uid });
+
+        console.log(`Solicitud de eliminación para el usuario ${uid} completada.`);
+
+    } catch (error: any) {
+        console.error("Error al llamar a la Cloud Function para eliminar usuario:", error);
+        throw new Error(error.message || "No se pudo eliminar el usuario.");
     }
 };
 

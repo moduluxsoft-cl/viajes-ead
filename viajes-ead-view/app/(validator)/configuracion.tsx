@@ -216,17 +216,9 @@ export default function ConfiguracionScreen() {
 
                         <Text style={styles.helperText}>La hora se establecerá automáticamente a las 12:00 AM los días jueves</Text>
                     </Card>
-
-                    <Button
-                        title={saving ? "Guardando..." : "Guardar y Sobrescribir Viaje"}
-                        onPress={handleSave}
-                        disabled={saving}
-                        style={styles.saveButton}
-                    />
-
                     <Card style={styles.infoCard}>
                         <View style={styles.infoHeader}>
-                            <Ionicons name="information-circle" size={24} color="#3b82f6" />
+                            <Ionicons name="information-circle" size={24} color="#FFD000" />
                             <Text style={styles.infoTitle}>Información Importante</Text>
                         </View>
                         <View>
@@ -235,6 +227,12 @@ export default function ConfiguracionScreen() {
                             ))}
                         </View>
                     </Card>
+                    <Button
+                        title={saving ? "Guardando..." : "Guardar y Sobrescribir Viaje"}
+                        onPress={handleSave}
+                        disabled={saving}
+                        style={styles.saveButton}
+                    />
                 </View>
 
                 {successMessage ? (
@@ -330,8 +328,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFBD4',
         borderColor: '#FFD000',
         borderWidth: 1,
-        marginBottom: 24,
-        marginTop: 16
+        marginBottom: 30,
     },
     infoHeader: {
         flexDirection: 'row',

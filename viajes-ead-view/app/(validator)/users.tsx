@@ -32,6 +32,8 @@ import {
 } from '@/src/services/usersService';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
+import {EadLogo} from "@/assets/icons/ead-logo";
+import PucvLogo from "@/assets/icons/pucv-logo";
 
 // --- TIPO PARA MANEJAR ACCIONES ---
 type ActionToConfirm = {
@@ -279,7 +281,7 @@ export default function UsersScreen() {
                     ) : (
                         <>
                             <TouchableOpacity style={styles.actionButton} onPress={() => handleOpenEditModal(item)} hitSlop={hitSlop}>
-                                <Ionicons name="pencil" size={22} color="#6366f1" />
+                                <Ionicons name="pencil" size={22} color="#2B2B2B" />
                             </TouchableOpacity>
 
                             <TouchableOpacity style={styles.actionButton} onPress={() => requestActionConfirmation('toggle', item)} hitSlop={hitSlop}>
@@ -306,7 +308,11 @@ export default function UsersScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}><Text style={styles.title}>Gestión de Usuarios</Text></View>
+            <View style={styles.header}>
+                <EadLogo/>
+                <Text style={styles.title}>Gestión de Usuarios</Text>
+                <PucvLogo/>
+            </View>
             <View style={styles.controlsContainer}>
                 <TextInput style={styles.searchInput} placeholder="Buscar por nombre, RUT o email..." value={searchQuery} onChangeText={setSearchQuery} />
                 <Button title="Añadir" onPress={() => handleOpenEditModal()} style={styles.addButton} textStyle={{fontSize: 14}}/>
@@ -343,13 +349,25 @@ export default function UsersScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f9fafb' },
-    header: { backgroundColor: '#667eea', padding: 20, paddingTop: 40 },
-    title: { fontSize: 24, fontWeight: 'bold', color: '#fff', textAlign: 'center' },
-    controlsContainer: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 8 },
+    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    header: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#2B2B2B',
+        textAlign: 'center',
+        paddingBottom: 1,
+    },
+    controlsContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, gap: 8 },
     searchInput: { flex: 1, backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, borderWidth: 1, borderColor: '#d1d5db' },
-    addButton: { paddingHorizontal: 12, backgroundColor: '#10b981'},
-    csvButton: { paddingHorizontal: 12, backgroundColor: '#3b82f6'},
+    addButton: { paddingHorizontal: 12, backgroundColor: '#BE031E'},
+    csvButton: { paddingHorizontal: 12, backgroundColor: '#BE031E'},
     listContainer: { paddingHorizontal: 16, paddingBottom: 16 },
     userCard: { marginBottom: 12 },
     userHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },

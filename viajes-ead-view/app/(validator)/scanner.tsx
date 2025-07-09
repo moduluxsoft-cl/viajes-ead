@@ -1,16 +1,18 @@
 // app/(validator)/scanner.tsx
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
-import { QRScanner } from '../../components/QRScanner';
-import { ResultModal } from '../../components/ResultModal';
-import { useAuth } from '../../contexts/AuthContext';
-import { decryptQRData } from '../../src/services/encryption';
+import { QRScanner } from '@/components/QRScanner';
+import { ResultModal } from '@/components/ResultModal';
+import { useAuth } from '@/contexts/AuthContext';
+import { decryptQRData } from '@/src/services/encryption';
 import {
     validarPaseConteo,
     obtenerDetallesCompletosPase,
     Pase,
     Viaje
-} from '../../src/services/viajesService';
+} from '@/src/services/viajesService';
+import {EadLogo} from "@/assets/icons/ead-logo";
+import PucvLogo from "@/assets/icons/pucv-logo";
 
 export default function ScannerScreen() {
     const { userData } = useAuth();
@@ -82,10 +84,12 @@ export default function ScannerScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Validador de Pases</Text>
-                <Text style={styles.subtitle}>
-                    {userData?.nombre} {userData?.apellido}
-                </Text>
+                <EadLogo/>
+                <View>
+                    <Text style={styles.title}>Validador de Pases</Text>
+                    <Text style={styles.subtitle}>Hola {userData?.nombre} {userData?.apellido}!</Text>
+                </View>
+                <PucvLogo/>
             </View>
 
             <View style={styles.scannerContainer}>
@@ -111,24 +115,26 @@ export default function ScannerScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f9fafb',
+        backgroundColor: '#FFFFFF',
     },
     header: {
-        backgroundColor: '#667eea',
-        padding: 20,
-        paddingTop: 40,
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     title: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 'bold',
-        color: '#fff',
+        color: '#2B2B2B',
         textAlign: 'center',
+        paddingBottom: 1,
     },
     subtitle: {
         fontSize: 16,
-        color: '#fff',
+        color: '#2B2B2B',
         textAlign: 'center',
-        marginTop: 4,
         opacity: 0.9,
     },
     scannerContainer: {

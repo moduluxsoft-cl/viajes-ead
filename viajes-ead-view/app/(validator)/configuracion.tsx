@@ -20,6 +20,8 @@ import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
 import {Ionicons} from '@expo/vector-icons';
 import {obtenerViajeActivo, sobrescribirViajeActivo, Viaje} from '@/src/services/viajesService';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import {EadLogo} from "@/assets/icons/ead-logo";
+import PucvLogo from "@/assets/icons/pucv-logo";
 
 type ViajeFormData = Omit<Viaje, 'id' | 'pasesGenerados' | 'estado'>;
 
@@ -162,11 +164,15 @@ export default function ConfiguracionScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <View style={styles.header}>
-                    <Text style={styles.title}>Configuración del Viaje Activo</Text>
-                    <Text style={styles.subtitle}>Define los parámetros del próximo viaje disponible.</Text>
+            <View style={styles.header}>
+                <EadLogo/>
+                <View>
+                    <Text style={styles.title}>Configuraciones Viaje</Text>
+                    <Text style={styles.subtitle}>Parámetros del próximo viaje disponible.</Text>
                 </View>
+                <PucvLogo/>
+            </View>
+            <ScrollView>
                 <View style={styles.innerDiv}>
                     <Card style={styles.card}>
                         <Text style={styles.label}>Capacidad Máxima</Text>
@@ -276,12 +282,30 @@ export default function ConfiguracionScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f9fafb' },
+    container: { flex: 1, backgroundColor: '#FFFFFF' },
     innerDiv: { padding: 20 },
-    header: { backgroundColor: '#667eea', padding: 20, paddingTop: 40 },
-    scrollContent: { padding: 0 },
-    title: { fontSize: 24, fontWeight: 'bold', color: '#fff', textAlign: 'center' },
-    subtitle: { fontSize: 14, color: '#fff', textAlign: 'center', marginBottom: 20 },
+    header: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#2B2B2B',
+        textAlign: 'center',
+        paddingBottom: 1,
+        maxWidth: 250,
+    },
+    subtitle: {
+        fontSize: 16,
+        color: '#2B2B2B',
+        textAlign: 'center',
+        opacity: 0.9,
+        maxWidth: 250,
+    },
     card: { marginBottom: 24 },
     label: { fontSize: 16, fontWeight: '600', color: '#374151', marginBottom: 8 },
     input: {
@@ -303,7 +327,7 @@ const styles = StyleSheet.create({
         marginTop: 4
     },
     saveButton: {
-        backgroundColor: '#667eea'
+        backgroundColor: '#BE031E'
     },
     errorText: {
         textAlign: 'center',

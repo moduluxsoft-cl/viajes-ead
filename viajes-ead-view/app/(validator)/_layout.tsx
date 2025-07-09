@@ -18,9 +18,12 @@ export default function ValidatorLayout() {
     return (
         <Tabs
             screenOptions={{
-                tabBarActiveTintColor: '#667eea',
+                tabBarActiveTintColor: '#BE031E',
                 tabBarInactiveTintColor: '#9ca3af',
                 headerShown: false,
+                tabBarStyle: {
+                    height: 60,
+                },
             }}
         >
             <Tabs.Screen

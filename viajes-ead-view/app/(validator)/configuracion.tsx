@@ -1,28 +1,12 @@
 // app/(validator)/configuracion.tsx
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    SafeAreaView,
-    TextInput,
-    Alert,
-    Platform,
-    ScrollView,
-    TouchableOpacity,
-    Modal,
-    Pressable
-} from 'react-native';
-import { useAuth } from '../../contexts/AuthContext';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import { Ionicons } from '@expo/vector-icons';
-import {
-    obtenerViajeActivo,
-    sobrescribirViajeActivo,
-    Viaje
-} from '../../src/services/viajesService';
+import React, {useCallback, useEffect, useState} from 'react';
+import {Alert, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {useAuth} from '@/contexts/AuthContext';
+import {Card} from '@/components/ui/Card';
+import {Button} from '@/components/ui/Button';
+import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
+import {Ionicons} from '@expo/vector-icons';
+import {obtenerViajeActivo, sobrescribirViajeActivo, Viaje} from '@/src/services/viajesService';
 
 type ViajeFormData = Omit<Viaje, 'id' | 'pasesGenerados' | 'estado'>;
 
@@ -193,90 +177,92 @@ export default function ConfiguracionScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Text style={styles.title}>Configuración del Viaje Activo</Text>
-                <Text style={styles.subtitle}>Aquí puedes ver, modificar o crear el próximo viaje disponible para reservas.</Text>
+                <View style={styles.header}>
+                    <Text style={styles.title}>Configuración del Viaje Activo</Text>
+                    <Text style={styles.subtitle}>Aquí puedes ver, modificar o crear el próximo viaje disponible para reservas.</Text>
+                </View>
 
-                <Card style={styles.card}>
-                    <Text style={styles.label}>Capacidad Máxima</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Ej: 300"
-                        keyboardType="number-pad"
-                        value={formData.capacidadMaxima?.toString() || ''}
-                        onChangeText={(text) => {
-                            const num = parseInt(text, 10);
-                            console.log('Capacidad cambiada:', text, 'parseado a:', num);
-                            setFormData(prev => ({ ...prev, capacidadMaxima: isNaN(num) ? undefined : num }));
-                        }}
-                    />
-
-                    <Text style={styles.label}>Destino del Viaje</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Ej: Campus Coquimbo"
-                        value={formData.destino || ''}
-                        onChangeText={(text) => setFormData(prev => ({ ...prev, destino: text }))}
-                    />
-
-                    <Text style={styles.label}>Fecha del Viaje</Text>
-                    <View style={styles.dateInputContainer}>
+                <View style={styles.innerDiv}>
+                    <Card style={styles.card}>
+                        <Text style={styles.label}>Capacidad Máxima</Text>
                         <TextInput
-                            style={[styles.input, styles.dateInput]}
-                            placeholder="DD/MM/YYYY"
-                            value={fechaString}
-                            onChangeText={handleDateChange}
-                            keyboardType="numeric"
-                            maxLength={10}
+                            style={styles.input}
+                            placeholder="Ej: 300"
+                            keyboardType="number-pad"
+                            value={formData.capacidadMaxima?.toString() || ''}
+                            onChangeText={(text) => {
+                                const num = parseInt(text, 10);
+                                console.log('Capacidad cambiada:', text, 'parseado a:', num);
+                                setFormData(prev => ({ ...prev, capacidadMaxima: isNaN(num) ? undefined : num }));
+                            }}
                         />
-                        <View style={styles.calendarIcon}>
-                            <Ionicons name="calendar" size={24} color="#6b7280" />
-                        </View>
-                    </View>
-                    <Text style={styles.helperText}>La hora se establecerá automáticamente a las 08:00 AM</Text>
 
-                    {formData.fechaViaje && (
-                        <View style={styles.datePreview}>
-                            <Text style={styles.datePreviewLabel}>Vista previa:</Text>
-                            <Text style={styles.datePreviewValue}>
-                                {formData.fechaViaje.toLocaleDateString('es-CL', {
-                                    weekday: 'long',
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                })}
-                            </Text>
+                        <Text style={styles.label}>Destino del Viaje</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Ej: Campus Coquimbo"
+                            value={formData.destino || ''}
+                            onChangeText={(text) => setFormData(prev => ({ ...prev, destino: text }))}
+                        />
+
+                        <Text style={styles.label}>Fecha del Viaje</Text>
+                        <View style={styles.dateInputContainer}>
+                            <TextInput
+                                style={[styles.input, styles.dateInput]}
+                                placeholder="DD/MM/YYYY"
+                                value={fechaString}
+                                onChangeText={handleDateChange}
+                                keyboardType="numeric"
+                                maxLength={10}
+                            />
+                            <View style={styles.calendarIcon}>
+                                <Ionicons name="calendar" size={24} color="#6b7280" />
+                            </View>
                         </View>
-                    )}
-                </Card>
+                        <Text style={styles.helperText}>La hora se establecerá automáticamente a las 12:00 AM los días jueves</Text>
+
+                        {formData.fechaViaje && (
+                            <View style={styles.datePreview}>
+                                <Text style={styles.datePreviewLabel}>Vista previa:</Text>
+                                <Text style={styles.datePreviewValue}>
+                                    {formData.fechaViaje.toLocaleDateString('es-CL', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                    })}
+                                </Text>
+                            </View>
+                        )}
+                    </Card>
+                    <Card style={styles.infoCard}>
+                        <View style={styles.infoHeader}>
+                            <Ionicons name="information-circle" size={24} color="#FFD000" />
+                            <Text style={styles.infoTitle}>Información Importante</Text>
+                        </View>
+                        <Text style={styles.infoText}>
+                            • Solo puede existir un viaje activo a la vez{'\n'}
+                            • Al guardar, el viaje anterior será cancelado automáticamente{'\n'}
+                            • Los pases del viaje anterior quedarán inválidos{'\n'}
+                            • Los estudiantes deberán generar nuevos pases
+                        </Text>
+                    </Card>
+                    <Button
+                        title={saving ? "Guardando..." : "Guardar y Sobrescribir Viaje"}
+                        onPress={() => {
+                            console.log('Botón presionado');
+                            handleSave();
+                        }}
+                        disabled={saving}
+                        style={styles.saveButton}
+                    />
+                </View>
 
                 {successMessage ? (
                     <View style={styles.successContainer}>
                         <Text style={styles.successText}>{successMessage}</Text>
                     </View>
                 ) : null}
-
-                <Button
-                    title={saving ? "Guardando..." : "Guardar y Sobrescribir Viaje"}
-                    onPress={() => {
-                        console.log('Botón presionado');
-                        handleSave();
-                    }}
-                    disabled={saving}
-                    style={styles.saveButton}
-                />
-
-                <Card style={styles.infoCard}>
-                    <View style={styles.infoHeader}>
-                        <Ionicons name="information-circle" size={24} color="#3b82f6" />
-                        <Text style={styles.infoTitle}>Información Importante</Text>
-                    </View>
-                    <Text style={styles.infoText}>
-                        • Solo puede existir un viaje activo a la vez{'\n'}
-                        • Al guardar, el viaje anterior será cancelado automáticamente{'\n'}
-                        • Los pases del viaje anterior quedarán inválidos{'\n'}
-                        • Los estudiantes deberán generar nuevos pases
-                    </Text>
-                </Card>
             </ScrollView>
 
             <Modal
@@ -315,9 +301,11 @@ export default function ConfiguracionScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f9fafb' },
-    scrollContent: { padding: 20 },
-    title: { fontSize: 24, fontWeight: 'bold', color: '#111827', marginBottom: 8, textAlign: 'center' },
-    subtitle: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 20 },
+    innerDiv: { padding: 20 },
+    header: { backgroundColor: '#667eea', padding: 20, paddingTop: 40 },
+    scrollContent: { padding: 0 },
+    title: { fontSize: 24, fontWeight: 'bold', color: '#fff', textAlign: 'center' },
+    subtitle: { fontSize: 14, color: '#fff', textAlign: 'center', marginBottom: 20 },
     card: { marginBottom: 24 },
     label: { fontSize: 16, fontWeight: '600', color: '#374151', marginBottom: 8 },
     input: {
@@ -382,8 +370,8 @@ const styles = StyleSheet.create({
         fontWeight: 'bold'
     },
     infoCard: {
-        backgroundColor: '#eff6ff',
-        borderColor: '#3b82f6',
+        backgroundColor: '#FFFBD4',
+        borderColor: '#FFD000',
         borderWidth: 1,
         marginBottom: 24,
     },
@@ -395,12 +383,12 @@ const styles = StyleSheet.create({
     infoTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#1e40af',
+        color: '#FFD000',
         marginLeft: 8,
     },
     infoText: {
         fontSize: 14,
-        color: '#1e40af',
+        color: '#FFD000',
         lineHeight: 20,
     },
     modalOverlay: {

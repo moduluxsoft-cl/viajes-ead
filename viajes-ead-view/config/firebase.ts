@@ -1,15 +1,17 @@
 // firebase.ts
-import { initializeApp } from "firebase/app";
+import {initializeApp, setLogLevel} from "firebase/app";
 import { getFirestore } from 'firebase/firestore';
 import {
     getAuth,
     initializeAuth,
-    getReactNativePersistence,
+    ReactNativePersistence,
     Auth
 } from 'firebase/auth';
 import {Platform} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+if (__DEV__) {
+    setLogLevel("debug");   // 🔊 Muestra cada request/respuesta del SDK
+}
 // Firebase configuration
 export const firebaseConfig = {
     apiKey: "AIzaSyCo_eMk6NrQEqMB757fgU3FpMjLwBhfI9w",
@@ -33,7 +35,7 @@ if (Platform.OS === 'web') {
     auth = getAuth(app);
 } else {
     auth = initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage)
+        persistence: ReactNativePersistence(AsyncStorage)
     });
 }
 

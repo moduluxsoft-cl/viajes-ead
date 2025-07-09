@@ -1,31 +1,20 @@
 // src/services/usersService.ts
+import {collection, deleteDoc, doc, getDocs, query, setDoc, Timestamp, updateDoc, where} from 'firebase/firestore';
+import {auth, db, firebaseConfig} from '@/config/firebase';
+import {UserData} from '@/contexts/AuthContext';
+import {deleteApp, initializeApp} from 'firebase/app';
 import {
-    collection,
-    doc,
-    getDocs,
-    updateDoc,
-    deleteDoc,
-    query,
-    where,
-    setDoc,
-    Timestamp,
-    writeBatch
-} from 'firebase/firestore';
-import { auth, db , firebaseConfig} from '../../config/firebase';
-import { UserData } from '../../contexts/AuthContext';
-import { initializeApp, deleteApp } from 'firebase/app';
-import {
-    getAuth,
     createUserWithEmailAndPassword,
-    sendPasswordResetEmail,
     deleteUser,
-    signInWithEmailAndPassword,
-    updateEmail,
-    updatePassword,
+    EmailAuthProvider,
+    getAuth,
     reauthenticateWithCredential,
-    EmailAuthProvider
+    sendPasswordResetEmail,
+    updateEmail,
+    updatePassword
 } from 'firebase/auth';
 import Papa from 'papaparse';
+import {getFunctions, httpsCallable} from "@firebase/functions";
 
 const usersCollectionRef = collection(db, 'users');
 
@@ -36,8 +25,7 @@ export const obtenerEstudiantes = async (): Promise<UserData[]> => {
     try {
         const q = query(usersCollectionRef, where('role', '==', 'student'));
         const querySnapshot = await getDocs(q);
-        const students = querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserData));
-        return students;
+        return querySnapshot.docs.map(doc => ({uid: doc.id, ...doc.data()} as UserData));
     } catch (error) {
         console.error("Error fetching students:", error);
         throw new Error("No se pudo obtener la lista de estudiantes.");
@@ -164,17 +152,19 @@ export const eliminarUsuarioCompleto = async (uid: string): Promise<void> => {
  */
 export const eliminarUsuarioComoAdmin = async (uid: string): Promise<void> => {
     try {
-        // Eliminar de Firestore
-        const userDocRef = doc(db, 'users', uid);
-        await deleteDoc(userDocRef);
-
-        // Llamar a Cloud Function para eliminar de Auth faltaaaaa
+        const functions = getFunctions();
 
 
-        console.log("Usuario eliminado de Firestore. Para eliminación completa, implementa una Cloud Function.");
-    } catch (error) {
-        console.error("Error eliminando usuario:", error);
-        throw new Error("No se pudo eliminar el usuario.");
+        const deleteUserFunction = httpsCallable(functions, 'deleteUser');
+
+        console.log(`Enviando solicitud para eliminar al usuario: ${uid}`);
+        await deleteUserFunction({ uid: uid });
+
+        console.log(`Solicitud de eliminación para el usuario ${uid} completada.`);
+
+    } catch (error: any) {
+        console.error("Error al llamar a la Cloud Function para eliminar usuario:", error);
+        throw new Error(error.message || "No se pudo eliminar el usuario.");
     }
 };
 

@@ -1,7 +1,6 @@
 // app/(student)/index.tsx
 import React, {useCallback, useEffect, useState} from 'react';
 import {Alert, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {LinearGradient} from 'expo-linear-gradient';
 import {useAuth} from '@/contexts/AuthContext';
 import {QRGenerator} from '@/components/QRGenerator';
 import {Card} from '@/components/ui/Card';
@@ -81,7 +80,7 @@ export default function StudentHomeScreen() {
     }
 
     return (
-        <LinearGradient colors={['#667eea', '#764ba2']} style={styles.gradient}>
+        <View style={styles.gradient}>
             <SafeAreaView style={styles.container}>
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
@@ -136,12 +135,12 @@ export default function StudentHomeScreen() {
                     )}
                 </ScrollView>
             </SafeAreaView>
-        </LinearGradient>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    gradient: { flex: 1 },
+    gradient: { flex: 1, backgroundColor: '#FFF7F8' },
     container: { flex: 1 },
     scrollContent: { padding: 16, flexGrow: 1 },
     header: {
@@ -153,11 +152,11 @@ const styles = StyleSheet.create({
     welcomeText: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#fff',
+        color: '#2B2B2B',
         flex: 1,
     },
     logoutButton: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: '#BA5766',
         paddingHorizontal: 16,
         paddingVertical: 8,
     },
@@ -194,9 +193,9 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginBottom: 20,
     },
-    createButton: { backgroundColor: '#667eea' },
+    createButton: { backgroundColor: '#BE031E' },
     disabledButton: {
-        backgroundColor: '#9ca3af',
+        backgroundColor: '#BA5766',
         opacity: 0.6,
     },
     paseDetails: { width: '100%', marginTop: 20 },

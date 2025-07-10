@@ -267,8 +267,8 @@ export const UserFormModal = ({ visible, onClose, onSubmit, initialData, saving 
                         </View>
 
                         <View style={styles.buttonContainer}>
-                            <Button title="Cancelar" onPress={onClose} variant="secondary" style={{ marginRight: 10 }} />
-                            <Button title={saving ? "Guardando..." : "Guardar"} onPress={handleSubmit} loading={saving} disabled={Object.keys(errors).length !== 0}/>
+                            <Button title="Cancelar" onPress={onClose} variant="secondary" style={{ marginRight: 10, borderColor: '#BE031E' }} textStyle={{color: '#BE031E'}}/>
+                            <Button title={saving ? "Guardando..." : "Guardar"} onPress={handleSubmit} loading={saving} disabled={Object.keys(errors).length !== 0} style={{backgroundColor: '#BE031E'}}/>
                         </View>
                     </ScrollView>
                 </View>

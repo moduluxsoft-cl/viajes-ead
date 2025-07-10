@@ -84,12 +84,12 @@ export default function ScannerScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <EadLogo/>
+                <EadLogo width={40}/>
                 <View>
                     <Text style={styles.title}>Validador de Pases</Text>
                     <Text style={styles.subtitle}>Hola {userData?.nombre} {userData?.apellido}!</Text>
                 </View>
-                <PucvLogo/>
+                <PucvLogo width={40} height={42}/>
             </View>
 
             <View style={styles.scannerContainer}>

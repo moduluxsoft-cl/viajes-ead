@@ -1,8 +1,12 @@
 import React from 'react';
 import Svg, { Path } from 'react-native-svg';
 
-export const EadLogo = () => {
-    const width = 40;
+interface EadLogoProps {
+    width: number;
+}
+
+export const EadLogo = ({ width }: EadLogoProps
+) => {
     const aspectRatio = width / 42;
     const height = width / aspectRatio;
 

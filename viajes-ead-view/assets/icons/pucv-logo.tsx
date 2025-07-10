@@ -1,10 +1,14 @@
 import React from 'react';
 import {Image} from 'react-native';
 
-const PucvLogo = () => {
-    const width = 40;
-    const aspectRatio = width / 42;
-    const height = width / aspectRatio;
+interface PucvLogoProps {
+    width: number;
+    height: number;
+}
+
+const PucvLogo = ({ width, height }: PucvLogoProps) => {
+    const aspectRatio = width / height;
+    height = width / aspectRatio;
     return (
         <Image
             source={require('../images/PUCV-1.webp')}

@@ -309,9 +309,9 @@ export default function UsersScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <EadLogo/>
+                <EadLogo width={40}/>
                 <Text style={styles.title}>Gestión de Usuarios</Text>
-                <PucvLogo/>
+                <PucvLogo width={40} height={42}/>
             </View>
             <View style={styles.controlsContainer}>
                 <TextInput style={styles.searchInput} placeholder="Buscar por nombre, RUT o email..." value={searchQuery} onChangeText={setSearchQuery} />

@@ -1,24 +1,25 @@
 import React, {useEffect, useState} from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    SafeAreaView,
-    KeyboardAvoidingView,
-    Platform,
     Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
     ScrollView,
+    StyleSheet,
+    Text,
     TouchableOpacity,
-    Modal
+    View
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
-import { useAuth } from '../../contexts/AuthContext';
-import { FirebaseError } from 'firebase/app';
-import { enviarEmailRecuperacion } from '../../src/services/usersService';
-import {useLocalSearchParams} from "expo-router"; // Importamos la función
+import {Input} from '@/components/ui/Input';
+import {Button} from '@/components/ui/Button';
+import {Card} from '@/components/ui/Card';
+import {useAuth} from '@/contexts/AuthContext';
+import {FirebaseError} from 'firebase/app';
+import {enviarEmailRecuperacion} from '@/src/services/usersService';
+import {useLocalSearchParams} from "expo-router";
+import {EadLogo} from "@/assets/icons/ead-logo";
+import PucvLogo from "@/assets/icons/pucv-logo"; // Importamos la función
 
 export default function LoginScreen() {
     const { login } = useAuth();
@@ -115,7 +116,7 @@ export default function LoginScreen() {
     };
 
     return (
-        <LinearGradient colors={['#667eea', '#764ba2']} style={styles.gradient}>
+        <View style={{ flex: 1, backgroundColor: '#FFF7F8' }}>
             <SafeAreaView style={styles.container}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -129,7 +130,10 @@ export default function LoginScreen() {
                             <Text style={styles.title}>Viajes EAD</Text>
                             <Text style={styles.subtitle}>Sistema de Pases Escolares</Text>
                         </View>
-
+                        <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center', maxHeight: 200 }}>
+                            <EadLogo width={100}/>
+                            <PucvLogo width={100} height={100}/>
+                        </View>
                         <Card style={styles.loginCard}>
                             {showLogoutMessage && (
                                 <View style={styles.successMessage}>
@@ -211,7 +215,7 @@ export default function LoginScreen() {
                                         keyboardType="email-address"
                                         autoCapitalize="none"
                                         autoComplete="email"
-                                        style={{ width: '100%' }}
+                                        containerStyle={{ width: '100%' }}
                                     />
                                     <Button
                                         title="Enviar Correo"
@@ -231,14 +235,11 @@ export default function LoginScreen() {
                     </View>
                 </Modal>
             </SafeAreaView>
-        </LinearGradient>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    gradient: {
-        flex: 1,
-    },
     container: {
         flex: 1,
     },
@@ -247,6 +248,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
+        flexDirection: 'column',
         justifyContent: 'center',
         padding: 20,
     },
@@ -257,12 +259,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 40,
         fontWeight: 'bold',
-        color: '#fff',
+        color: '#2B2B2B',
         marginBottom: 8,
     },
     subtitle: {
         fontSize: 18,
-        color: '#fff',
+        color: '#2B2B2B',
         opacity: 0.9,
     },
     loginCard: {
@@ -272,13 +274,14 @@ const styles = StyleSheet.create({
     },
     loginButton: {
         marginTop: 8,
+        backgroundColor: '#BE031E',
     },
     forgotPasswordButton: {
         marginTop: 16,
         alignItems: 'center',
     },
     forgotPasswordText: {
-        color: '#667eea',
+        color: '#BE031E',
         fontSize: 14,
         fontWeight: '600',
     },
@@ -321,6 +324,7 @@ const styles = StyleSheet.create({
     modalButton: {
         width: '100%',
         marginTop: 10,
+        backgroundColor: '#BE031E',
     },
     successText: {
         color: '#10b981', // Verde

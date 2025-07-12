@@ -35,66 +35,58 @@ const auth_1 = require("firebase-admin/auth");
 (0, app_1.initializeApp)();
 const db = (0, firestore_1.getFirestore)();
 exports.updateTravelDateWeekly = (0, scheduler_1.onSchedule)({
-    schedule: '0 0 * * 4',
+    schedule: '0 16 * * *',
     timeZone: 'America/Santiago',
 }, async (event) => {
-    await updateTravelDate();
+    console.log("Actualizando fecha de viaje.");
+    await updateTravelDate('testUpdateTravelDate').then(() => {
+        console.log("Fecha de viaje actualizada exitosamente.");
+    }).catch((error) => {
+        console.error('Error actualizando documentos:', error);
+    });
 });
 exports.testUpdateTravelDate = (0, https_1.onRequest)(async (req, res) => {
-    try {
-        await updateTravelDate();
+    await updateTravelDate('testUpdateTravelDate').then(() => {
         res.status(200).json({
             message: "Fecha de viaje actualizada exitosamente",
             timestamp: new Date().toISOString()
         });
-    }
-    catch (error) {
+    }).catch((error) => {
         console.error('Error en prueba:', error);
         res.status(500).json({ error: "Error en prueba" });
-    }
+    });
 });
-async function updateTravelDate() {
-    try {
-        const db = (0, firestore_1.getFirestore)();
-        const propertiesCollection = db.collection('properties');
-        const querySnapshot = await propertiesCollection.where('name', '==', 'DATE_TRAVEL').get();
-        if (querySnapshot.empty) {
-            console.log('No se encontró el documento con name = "DATE_TRAVEL"');
-            throw new Error("Documento \"DATE_TRAVEL\" no encontrado.");
-        }
-        if (querySnapshot.size > 1) {
-            console.log('Se encontraron varios documentos con name = "DATE_TRAVEL"');
-            throw new Error("Se encontraron varios documentos con name = \"DATE_TRAVEL\".");
-        }
-        const travelDateDoc = querySnapshot.docs[0];
-        console.log(`Docuemnto con id = "${travelDateDoc.id}" encontrado.`);
-        const today = new Date();
-        const todayTimestamp = Timestamp.fromDate(today);
-        await travelDateDoc.ref.update({
-            value: todayTimestamp,
-            lastUpdated: Timestamp.now(),
-            updatedBy: 'scheduled_function'
-        }).then(() => {
-            console.log(`Documento actualizado correctamente.`);
-            return {
-                success: true,
-                documentId: travelDateDoc.id,
-                newDate: today.toISOString(),
-                message: 'Fecha de viaje actualizada exitosamente'
-            };
-        }).catch((error) => {
-            console.error(error.message);
-            return {
-                success: false,
-                documentId: travelDateDoc.id,
-                newDate: today.toISOString(),
-                message: error.message
-            };
-        });
+async function updateTravelDate(callerName) {
+    const db = (0, firestore_1.getFirestore)();
+    const propertiesCollection = db.collection('properties');
+    const querySnapshot = await propertiesCollection.where('name', '==', 'DATE_TRAVEL').get();
+    if (querySnapshot.empty) {
+        console.log('No se encontró el documento con name = "DATE_TRAVEL"');
+        throw new Error("Documento \"DATE_TRAVEL\" no encontrado.");
     }
-    catch (error) {
-        console.error('Error actualizando documentos:', error);
+    if (querySnapshot.size > 1) {
+        console.log('Se encontraron varios documentos con name = "DATE_TRAVEL"');
+        throw new Error("Se encontraron varios documentos con name = \"DATE_TRAVEL\".");
     }
+    const travelDateDoc = querySnapshot.docs[0];
+    console.log(`Documento de fecha de viaje, con id = "${travelDateDoc.id}" encontrado.`);
+    const actualTravelTimestamp = travelDateDoc.data().value;
+    const actualTravelDate = actualTravelTimestamp.toDate();
+    //Agregar una semana
+    const updatedTravelDate = new Date(actualTravelDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+    // Quitar los segundos (establecer segundos y milisegundos a 0)
+    updatedTravelDate.setHours(12, 0, 0, 0);
+    await travelDateDoc.ref.update({
+        value: updatedTravelDate,
+        lastUpdated: Timestamp.now(),
+        updatedBy: 'updateTravelDate',
+        executedBy: callerName
+    }).then(() => {
+        return;
+    }).catch((error) => {
+        console.error(error.message);
+        throw error;
+    });
 }
 /**
  * Cloud Function para eliminar un usuario de Firebase Auth y de Firestore.
@@ -103,8 +95,6 @@ async function updateTravelDate() {
  */
 exports.deleteUser = (0, https_2.onCall)({ region: "us-central1" }, async (request) => {
     var _a, _b;
-    // 1. Verificar que la solicitud la hace un administrador autenticado
-    // En la v2, la información de auth está en request.auth
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.role) !== "admin") {
         throw new https_2.HttpsError("permission-denied", "Solo los administradores pueden eliminar usuarios.");
     }

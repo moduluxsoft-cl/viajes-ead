@@ -220,7 +220,7 @@ export default function ConfiguracionScreen() {
                             </>
                         )}
 
-                        <Text style={styles.helperText}>La hora se establecerá automáticamente a las 12:00 AM los días jueves</Text>
+                        <Text style={styles.helperText}>La fecha se actualizará automáticamente a 7 días después (1 semana) del día actual. Esto ocurre días miércoles a las 23:00 horas.</Text>
                     </Card>
                     <Card style={styles.infoCard}>
                         <View style={styles.infoHeader}>

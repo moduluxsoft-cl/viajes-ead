@@ -33,6 +33,9 @@ import Timestamp = firestore.Timestamp;
 import {onRequest} from "firebase-functions/https";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {getAuth} from "firebase-admin/auth";
+import firebase = require("firebase-admin");
+import QueryDocumentSnapshot = firebase.firestore.QueryDocumentSnapshot;
+import DocumentData = firebase.firestore.DocumentData;
 
 initializeApp();
 const db = getFirestore();
@@ -102,6 +105,114 @@ async function updateTravelDate(callerName: String) {
         console.error(error.message);
         throw error;
     })
+}
+
+export const deleteInactiveTravelsAndPasesWeekly = onSchedule(
+    {
+        schedule: '0 16 * * *',
+        timeZone: 'America/Santiago',
+    },
+    async (event) => {
+        console.log("Eliminando documentos de viajes y pases inactivos.")
+        await deleteInactiveTravelsAndPases().then(() => {
+            console.log("Documentos eliminados exitosamente.");
+        }).catch((error: Error) => {
+            console.error('Error eliminando documentos:', error);
+        });
+    }
+);
+
+export const testDeleteInactiveTravelsAndPases = onRequest(async (req, res) => {
+    await deleteInactiveTravelsAndPases().then(() => {
+        res.status(200).json({
+            message: "Documentos eliminados exitosamente.",
+            timestamp: new Date().toISOString()
+        });
+    }).catch((error) => {
+        console.error('Error en prueba:', error);
+        res.status(500).json({ error: "Error en prueba" });
+    });
+});
+
+async function deleteInactiveTravelsAndPases() {
+    const db = getFirestore();
+    const travelsCollection = db.collection('viajes');
+
+    try {
+        // Obtener todos los documentos de la colección "viajes"
+        const travelsQuerySnapshot = await travelsCollection.get();
+
+        if (travelsQuerySnapshot.empty) {
+            console.log('No se encontraron viajes en la colección');
+            return;
+        }
+
+        const batch = db.batch();
+        let viajeAbiertoEncontrado = false;
+        let docsToDelete: QueryDocumentSnapshot<DocumentData>[] = [];
+        let activeTravelDoc: QueryDocumentSnapshot<DocumentData>;
+
+        // Iterar sobre todos los documentos
+        travelsQuerySnapshot.forEach((doc) => {
+            const viajeData = doc.data();
+
+            if (viajeData.STATE === 'ABIERTO') {
+                if (viajeAbiertoEncontrado) {
+                    // Si ya encontramos un viaje abierto, este duplicado se elimina
+                    console.log(`Añadiendo viaje duplicado con estado ABIERTO a lista de borrados: ${doc.id}`);
+                    docsToDelete.push(doc);
+                } else {
+                    // Primer viaje con estado ABIERTO, lo conservamos
+                    console.log(`Conservando viaje con estado ABIERTO: ${doc.id}`);
+                    viajeAbiertoEncontrado = true;
+                    activeTravelDoc = doc;
+                }
+            } else {
+                // Cualquier viaje que no tenga estado ABIERTO se elimina
+                console.log(`Añadiendo viaje con estado ${viajeData.STATE}: ${doc.id} a lsita de borrados.`);
+                docsToDelete.push(doc);
+            }
+        });
+
+        if (!viajeAbiertoEncontrado) {
+            console.log("No existe un documento de viaje con estado ABIERTO.")
+            return;
+        }
+
+        const pasesCollection = db.collection('pases');
+        const pasesQuerySnapshot = await pasesCollection.get();
+
+        if (pasesQuerySnapshot.empty) {
+            console.log("No se encontraron pases en la colección.");
+            return;
+        }
+
+        pasesQuerySnapshot.forEach((doc) => {
+            const paseData = doc.data();
+
+            if (paseData.viajeId !== activeTravelDoc.id) {
+                console.log(`Añadiendo pase con viajeId=${paseData.viajeId} a la lista de borrados.`);
+                docsToDelete.push(doc);
+            }
+        })
+
+        // Agregar las eliminaciones al batch
+        docsToDelete.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        // Ejecutar el batch
+        if (docsToDelete.length > 0) {
+            await batch.commit();
+            console.log(`Se eliminaron ${docsToDelete.length} documentos.`);
+        } else {
+            console.log('No se encontraron documentos para eliminar.');
+        }
+
+    } catch (error) {
+        console.error('Error eliminando documentos:', error);
+        throw error;
+    }
 }
 
 /**

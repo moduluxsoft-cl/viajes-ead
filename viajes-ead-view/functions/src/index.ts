@@ -69,23 +69,23 @@ export const testUpdateTravelDate = onRequest(async (req, res) => {
 
 async function updateTravelDate(callerName: String) {
     const db = getFirestore();
-    const propertiesCollection = db.collection('properties');
-    const querySnapshot = await propertiesCollection.where('name', '==', 'DATE_TRAVEL').get();
+    const propertiesCollection = db.collection('viajes');
+    const querySnapshot = await propertiesCollection.where('STATE', '==', 'ABIERTO').get();
 
     if (querySnapshot.empty) {
-        console.log('No se encontró el documento con name = "DATE_TRAVEL"');
-        throw new Error("Documento \"DATE_TRAVEL\" no encontrado.");
+        console.log('No se encontró el documento con STATE = "ABIERTO"');
+        throw new Error("Documento con STATE = \"ABIERTO\" no encontrado.");
     }
 
     if (querySnapshot.size > 1) {
-        console.log('Se encontraron varios documentos con name = "DATE_TRAVEL"');
-        throw new Error("Se encontraron varios documentos con name = \"DATE_TRAVEL\".");
+        console.log('Se encontraron varios documentos con STATE = "ABIERTO"');
+        throw new Error("Se encontraron varios documentos con STATE = \"ABIERTO\".");
     }
 
     const travelDateDoc = querySnapshot.docs[0];
     console.log(`Documento de fecha de viaje, con id = "${travelDateDoc.id}" encontrado.`);
 
-    const actualTravelTimestamp = travelDateDoc.data().value as Timestamp;
+    const actualTravelTimestamp = travelDateDoc.data().DATE_TRAVEL as Timestamp;
     const actualTravelDate = actualTravelTimestamp.toDate();
 
     //Agregar una semana
@@ -95,10 +95,7 @@ async function updateTravelDate(callerName: String) {
     updatedTravelDate.setHours(12, 0, 0, 0);
 
     await travelDateDoc.ref.update({
-        value: updatedTravelDate,
-        lastUpdated: Timestamp.now(),
-        updatedBy: 'updateTravelDate',
-        executedBy: callerName
+        DATE_TRAVEL: updatedTravelDate,
     }).then(() => {
         return;
     }).catch((error: Error) => {

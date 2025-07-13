@@ -27,8 +27,6 @@ const firebase_functions_1 = require("firebase-functions");
 const scheduler_1 = require("firebase-functions/scheduler");
 const app_1 = require("firebase-admin/app");
 const firestore_1 = require("firebase-admin/firestore");
-const firebase_admin_1 = require("firebase-admin");
-var Timestamp = firebase_admin_1.firestore.Timestamp;
 const https_1 = require("firebase-functions/https");
 const https_2 = require("firebase-functions/v2/https");
 const auth_1 = require("firebase-admin/auth");
@@ -58,29 +56,26 @@ exports.testUpdateTravelDate = (0, https_1.onRequest)(async (req, res) => {
 });
 async function updateTravelDate(callerName) {
     const db = (0, firestore_1.getFirestore)();
-    const propertiesCollection = db.collection('properties');
-    const querySnapshot = await propertiesCollection.where('name', '==', 'DATE_TRAVEL').get();
+    const propertiesCollection = db.collection('viajes');
+    const querySnapshot = await propertiesCollection.where('STATE', '==', 'ABIERTO').get();
     if (querySnapshot.empty) {
-        console.log('No se encontró el documento con name = "DATE_TRAVEL"');
-        throw new Error("Documento \"DATE_TRAVEL\" no encontrado.");
+        console.log('No se encontró el documento con STATE = "ABIERTO"');
+        throw new Error("Documento con STATE = \"ABIERTO\" no encontrado.");
     }
     if (querySnapshot.size > 1) {
-        console.log('Se encontraron varios documentos con name = "DATE_TRAVEL"');
-        throw new Error("Se encontraron varios documentos con name = \"DATE_TRAVEL\".");
+        console.log('Se encontraron varios documentos con STATE = "ABIERTO"');
+        throw new Error("Se encontraron varios documentos con STATE = \"ABIERTO\".");
     }
     const travelDateDoc = querySnapshot.docs[0];
     console.log(`Documento de fecha de viaje, con id = "${travelDateDoc.id}" encontrado.`);
-    const actualTravelTimestamp = travelDateDoc.data().value;
+    const actualTravelTimestamp = travelDateDoc.data().DATE_TRAVEL;
     const actualTravelDate = actualTravelTimestamp.toDate();
     //Agregar una semana
     const updatedTravelDate = new Date(actualTravelDate.getTime() + 7 * 24 * 60 * 60 * 1000);
     // Quitar los segundos (establecer segundos y milisegundos a 0)
     updatedTravelDate.setHours(12, 0, 0, 0);
     await travelDateDoc.ref.update({
-        value: updatedTravelDate,
-        lastUpdated: Timestamp.now(),
-        updatedBy: 'updateTravelDate',
-        executedBy: callerName
+        DATE_TRAVEL: updatedTravelDate,
     }).then(() => {
         return;
     }).catch((error) => {

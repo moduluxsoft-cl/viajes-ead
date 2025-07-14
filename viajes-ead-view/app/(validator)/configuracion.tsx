@@ -10,7 +10,6 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     View
 } from 'react-native';
 import {useAuth} from '@/contexts/AuthContext';
@@ -19,88 +18,56 @@ import {Button} from '@/components/ui/Button';
 import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
 import {Ionicons} from '@expo/vector-icons';
 import {obtenerViajeActivo, sobrescribirViajeActivo, Viaje} from '@/src/services/viajesService';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import {EadLogo} from "@/assets/icons/ead-logo";
 import PucvLogo from "@/assets/icons/pucv-logo";
 
-type ViajeFormData = Omit<Viaje, 'id' | 'pasesGenerados' | 'estado'>;
-
-// Componente para el input de fecha en web (versión simple y funcional)
-const WebDateInput = ({ value, onChange }: {
-    value: Date | undefined,
-    onChange: (date: Date) => void
-}) => {
-    const formatDateForInput = (date: Date | undefined) => {
-        if (!date) return '';
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
-
-    return (
-        <input
-            type="date"
-            value={formatDateForInput(value)}
-            onChange={(e) => {
-                if (e.target.value) {
-                    // El input devuelve la fecha en UTC, la convertimos a local
-                    const [year, month, day] = e.target.value.split('-').map(Number);
-                    const date = new Date(year, month - 1, day);
-                    date.setHours(8, 0, 0, 0);
-                    onChange(date);
-                }
-            }}
-            min={formatDateForInput(new Date())}
-            // Estilos básicos para que sea funcional, pero no alineado
-            style={{
-                fontSize: 16,
-                padding: 12,
-                border: '1px solid #ccc',
-                borderRadius: 8,
-                marginBottom: 16
-            }}
-        />
-    );
+// El tipo de dato para el formulario solo incluye los campos editables.
+type ViajeFormData = {
+    destino: string;
+    capacidadMaxima: number;
 };
 
 export default function ConfiguracionScreen() {
     const { userData } = useAuth();
 
-    const [formData, setFormData] = useState<Partial<ViajeFormData>>({});
+    // Estado solo para los campos del formulario.
+    const [formData, setFormData] = useState<ViajeFormData>({
+        destino: '',
+        capacidadMaxima: 0,
+    });
+    // Estado para guardar la información del viaje activo actual.
+    const [activeTrip, setActiveTrip] = useState<Viaje | null>(null);
+
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-    const [showDatePicker, setShowDatePicker] = useState(false);
-
+    // Función para formatear la fecha a dd/mm/yyyy
     const formatDateToString = (date: Date): string => {
-        return date.toLocaleDateString('es-CL', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // Los meses son 0-indexados
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
     };
 
     const loadActiveTrip = useCallback(async () => {
         setLoading(true);
         try {
             const viaje = await obtenerViajeActivo();
+            setActiveTrip(viaje); // Guardamos el viaje activo completo
+
             if (viaje) {
+                // Si hay un viaje activo, poblamos el formulario con sus datos.
                 setFormData({
                     destino: viaje.destino,
                     capacidadMaxima: viaje.capacidadMaxima,
-                    fechaViaje: viaje.fechaViaje,
                 });
             } else {
-                const hoy = new Date();
-                hoy.setHours(8, 0, 0, 0);
+                // Si no hay viaje, reseteamos el formulario.
                 setFormData({
-                    fechaViaje: hoy,
                     destino: '',
-                    capacidadMaxima: undefined,
+                    capacidadMaxima: 0,
                 });
             }
         } catch (error) {
@@ -115,22 +82,9 @@ export default function ConfiguracionScreen() {
         loadActiveTrip();
     }, [loadActiveTrip]);
 
-    const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        setShowDatePicker(false);
-        if (event.type === 'set' && selectedDate) {
-            const newDate = new Date(selectedDate);
-            newDate.setHours(8, 0, 0, 0);
-            setFormData(prev => ({ ...prev, fechaViaje: newDate }));
-        }
-    };
-
-    const handleWebDateChange = (date: Date) => {
-        setFormData(prev => ({ ...prev, fechaViaje: date }));
-    };
-
     const handleSave = () => {
-        if (!formData.fechaViaje || !formData.capacidadMaxima || !formData.destino) {
-            Alert.alert("Datos incompletos", "Por favor, completa todos los campos del formulario.");
+        if (!formData.destino || !formData.capacidadMaxima || formData.capacidadMaxima <= 0) {
+            Alert.alert("Datos incompletos", "Por favor, completa un destino y una capacidad máxima válida.");
             return;
         }
         setShowConfirmModal(true);
@@ -141,9 +95,15 @@ export default function ConfiguracionScreen() {
         setSaving(true);
         setSuccessMessage('');
         try {
-            await sobrescribirViajeActivo(formData as ViajeFormData);
+            // Creamos el objeto a guardar combinando los datos del form con la fecha actual.
+            const dataToSave = {
+                ...formData,
+                fechaViaje: new Date(), // La fecha siempre es la de hoy.
+            };
+
+            await sobrescribirViajeActivo(dataToSave);
             setSuccessMessage('¡La configuración del viaje se ha guardado con éxito!');
-            await loadActiveTrip();
+            await loadActiveTrip(); // Recargamos para mostrar la info actualizada
             setTimeout(() => setSuccessMessage(''), 4000);
         } catch (error) {
             const message = error instanceof Error ? error.message : "Ocurrió un error desconocido.";
@@ -174,6 +134,16 @@ export default function ConfiguracionScreen() {
             </View>
             <ScrollView>
                 <View style={styles.innerDiv}>
+                    {/* Sección informativa del viaje activo */}
+                    {activeTrip && (
+                        <Card style={styles.activeTripInfoCard}>
+                            <Text style={styles.activeTripTitle}>Viaje Activo Actual</Text>
+                            <Text style={styles.activeTripText}>Destino: {activeTrip.destino}</Text>
+                            <Text style={styles.activeTripText}>Fecha: {formatDateToString(activeTrip.fechaViaje)}</Text>
+                            <Text style={styles.activeTripText}>Capacidad: {activeTrip.capacidadMaxima}</Text>
+                        </Card>
+                    )}
+
                     <Card style={styles.card}>
                         <Text style={styles.label}>Capacidad Máxima</Text>
                         <TextInput
@@ -181,7 +151,7 @@ export default function ConfiguracionScreen() {
                             placeholder="Ej: 300"
                             keyboardType="number-pad"
                             value={formData.capacidadMaxima?.toString() || ''}
-                            onChangeText={(text) => setFormData(prev => ({ ...prev, capacidadMaxima: parseInt(text) || undefined }))}
+                            onChangeText={(text) => setFormData(prev => ({ ...prev, capacidadMaxima: parseInt(text) || 0 }))}
                         />
 
                         <Text style={styles.label}>Destino del Viaje</Text>
@@ -191,37 +161,8 @@ export default function ConfiguracionScreen() {
                             value={formData.destino || ''}
                             onChangeText={(text) => setFormData(prev => ({ ...prev, destino: text }))}
                         />
-
-                        <Text style={styles.label}>Fecha del Viaje</Text>
-
-                        {Platform.OS === 'web' ? (
-                            <WebDateInput
-                                value={formData.fechaViaje}
-                                onChange={handleWebDateChange}
-                            />
-                        ) : (
-                            <>
-                                <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerButton}>
-                                    <Ionicons name="calendar" size={20} color="#374151" />
-                                    <Text style={styles.datePickerButtonText}>
-                                        {formData.fechaViaje ? formatDateToString(formData.fechaViaje) : 'Seleccionar fecha'}
-                                    </Text>
-                                </TouchableOpacity>
-
-                                {showDatePicker && (
-                                    <DateTimePicker
-                                        value={formData.fechaViaje || new Date()}
-                                        mode="date"
-                                        display="default"
-                                        onChange={handleDateChange}
-                                        minimumDate={new Date()}
-                                    />
-                                )}
-                            </>
-                        )}
-
-                        <Text style={styles.helperText}>La fecha se actualizará automáticamente a 7 días después (1 semana) del día actual. Esto ocurre días miércoles a las 23:00 horas.</Text>
                     </Card>
+
                     <Card style={styles.infoCard}>
                         <View style={styles.infoHeader}>
                             <Ionicons name="information-circle" size={24} color="#FFD000" />
@@ -318,13 +259,6 @@ const styles = StyleSheet.create({
         borderColor: '#d1d5db',
         marginBottom: 16,
         color: '#111827'
-    },
-    helperText: {
-        fontSize: 12,
-        color: '#6b7280',
-        marginBottom: 12,
-        fontStyle: 'italic',
-        marginTop: 4
     },
     saveButton: {
         backgroundColor: '#BE031E'
@@ -437,20 +371,22 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         fontSize: 16
     },
-    datePickerButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+    // Estilos para la nueva tarjeta de información del viaje activo
+    activeTripInfoCard: {
+        marginBottom: 24,
+        backgroundColor: '#eef2ff',
+        borderColor: '#818cf8',
         borderWidth: 1,
-        borderColor: '#d1d5db',
-        gap: 12,
-        minHeight: 50
     },
-    datePickerButtonText: {
+    activeTripTitle: {
         fontSize: 16,
-        color: '#111827'
+        fontWeight: 'bold',
+        color: '#4338ca',
+        marginBottom: 8,
+    },
+    activeTripText: {
+        fontSize: 14,
+        color: '#4f46e5',
+        lineHeight: 20,
     }
 });

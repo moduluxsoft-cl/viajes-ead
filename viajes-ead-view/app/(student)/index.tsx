@@ -6,39 +6,33 @@ import {QRGenerator} from '@/components/QRGenerator';
 import {Card} from '@/components/ui/Card';
 import {Button} from '@/components/ui/Button';
 import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
-
 import {crearPase, obtenerPasesEstudiante, obtenerViajeActivo, Pase, Viaje} from '@/src/services/viajesService';
 
 export default function StudentHomeScreen() {
-    const { userData, logout, loading: authLoading } = useAuth();
+    // Se elimina la función 'logout' de useAuth porque ya no se usa aquí.
+    const { userData, loading: authLoading } = useAuth();
 
     const [viajeActivo, setViajeActivo] = useState<Viaje | null>(null);
     const [currentPase, setCurrentPase] = useState<Pase | null>(null);
     const [isCreatingPase, setIsCreatingPase] = useState(false);
-
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const loadInitialData = useCallback(async () => {
         if (!userData?.uid) return;
-
         setLoading(true);
         setError(null);
-
         try {
             const viaje = await obtenerViajeActivo();
             setViajeActivo(viaje);
-
             if (!viaje) {
                 setError('Actualmente no hay ningún viaje programado.');
                 return;
             }
-
             const pases = await obtenerPasesEstudiante(userData.uid);
             const paseActivoParaViajeActual = pases.find(p => p.estado === 'activo' && p.viajeId === viaje.id);
             setCurrentPase(paseActivoParaViajeActual || null);
-
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error inesperado.';
             setError(errorMessage);
@@ -61,12 +55,11 @@ export default function StudentHomeScreen() {
 
     const handleCrearPase = async () => {
         if (!viajeActivo || !userData) return;
-
         setIsCreatingPase(true);
         try {
             await crearPase(userData, viajeActivo);
             Alert.alert('¡Éxito!', 'Tu pase se ha generado correctamente.');
-            await loadInitialData(); // Recarga la información para mostrar el QR
+            await loadInitialData();
         } catch (error) {
             const message = error instanceof Error ? error.message : 'No se pudo crear el pase.';
             Alert.alert('Error', message);
@@ -86,10 +79,7 @@ export default function StudentHomeScreen() {
                     contentContainerStyle={styles.scrollContent}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 >
-                    <View style={styles.header}>
-                        <Text style={styles.welcomeText}>Bienvenido/a, {userData?.nombre}</Text>
-                        <Button title="Cerrar Sesión" onPress={logout} style={styles.logoutButton} />
-                    </View>
+                    {/* El header con el saludo y el botón de logout se ha eliminado de aquí */}
 
                     {error && (
                         <Card style={styles.warningCard}><Text style={styles.warningText}>{error}</Text></Card>
@@ -128,9 +118,9 @@ export default function StudentHomeScreen() {
                             <Button
                                 title="Creación de pases desactivada"
                                 style={styles.disabledButton}
-                                disabled={true} onPress={function (): void {
-                                throw new Error('Function not implemented.');
-                            }}                            />
+                                disabled={true}
+                                onPress={() => {}}
+                            />
                         </Card>
                     )}
                 </ScrollView>
@@ -139,27 +129,12 @@ export default function StudentHomeScreen() {
     );
 }
 
+// Los estilos permanecen mayormente iguales, solo eliminamos los que no se usan.
 const styles = StyleSheet.create({
     gradient: { flex: 1, backgroundColor: '#FFF7F8' },
     container: { flex: 1 },
     scrollContent: { padding: 16, flexGrow: 1 },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    welcomeText: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#2B2B2B',
-        flex: 1,
-    },
-    logoutButton: {
-        backgroundColor: '#BA5766',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-    },
+    // Se eliminan los estilos 'header', 'welcomeText' y 'logoutButton'
     warningCard: {
         backgroundColor: '#fef3cd',
         borderColor: '#fbbf24',

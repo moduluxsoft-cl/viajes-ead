@@ -11,7 +11,7 @@ import {
     Platform,
     Modal,
     Pressable,
-    ActivityIndicator
+    ActivityIndicator, ScrollView
 } from 'react-native';
 import {Card} from '@/components/ui/Card';
 import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
@@ -546,47 +546,50 @@ export default function UsersScreen() {
                 <Button title="Añadir" onPress={() => handleOpenEditModal()} style={styles.addButton} textStyle={{ fontSize: 14 }} />
             </View>
 
-            {/* Sección de Carga CSV */}
-            <View style={styles.csvSectionContainer}>
-                <Text style={styles.csvSectionTitle}>Carga Masiva de Usuarios</Text>
-                <Button
-                    title="Cargar CSV (Crear)"
-                    onPress={handleCsvUpload}
-                    style={[styles.csvButton, !canUploadCsv && styles.disabledButton]}
-                    textStyle={{ fontSize: 14 }}
-                    loading={isUploading}
-                    disabled={isUploading || !canUploadCsv}
-                />
-                {!canUploadCsv && <Text style={styles.limitWarningText}>{csvUploadLimitMessage}</Text>}
-            </View>
-
-            {/* Sección de Eliminación CSV */}
-            {currentUser?.role === 'admin' && ( // Solo admins pueden eliminar masivamente
+            <ScrollView>
+                {/* Sección de Carga CSV */}
                 <View style={styles.csvSectionContainer}>
-                    <Text style={styles.csvSectionTitle}>Eliminación Masiva de Usuarios</Text>
+                    <Text style={styles.csvSectionTitle}>Carga Masiva de Usuarios</Text>
                     <Button
-                        title="Cargar CSV (Eliminar)"
-                        onPress={handleCsvDeleteUpload}
-                        style={[styles.csvButton, styles.deleteCsvButton]}
+                        title="Cargar CSV (Crear)"
+                        onPress={handleCsvUpload}
+                        style={[styles.csvButton, !canUploadCsv && styles.disabledButton]}
                         textStyle={{ fontSize: 14 }}
-                        loading={isDeletingCsv}
-                        disabled={isDeletingCsv}
+                        loading={isUploading}
+                        disabled={isUploading || !canUploadCsv}
                     />
-                    <Text style={styles.deleteCsvHintText}>
-                        El CSV para eliminar debe contener solo una columna 'email'.
-                    </Text>
+                    {!canUploadCsv && <Text style={styles.limitWarningText}>{csvUploadLimitMessage}</Text>}
                 </View>
-            )}
+
+                {/* Sección de Eliminación CSV */}
+                {currentUser?.role === 'admin' && ( // Solo admins pueden eliminar masivamente
+                    <View style={styles.csvSectionContainer}>
+                        <Text style={styles.csvSectionTitle}>Eliminación Masiva de Usuarios</Text>
+                        <Button
+                            title="Cargar CSV (Eliminar)"
+                            onPress={handleCsvDeleteUpload}
+                            style={[styles.csvButton, styles.deleteCsvButton]}
+                            textStyle={{ fontSize: 14 }}
+                            loading={isDeletingCsv}
+                            disabled={isDeletingCsv}
+                        />
+                        <Text style={styles.deleteCsvHintText}>
+                            El CSV para eliminar debe contener solo una columna 'email'.
+                        </Text>
+                    </View>
+                )}
 
 
-            <FlatList
-                data={filteredUsers}
-                renderItem={renderUser}
-                keyExtractor={(item) => item.uid}
-                contentContainerStyle={styles.listContainer}
-                ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>No se encontraron usuarios</Text></View>}
-                keyboardShouldPersistTaps="handled"
-            />
+                <FlatList
+                    data={filteredUsers}
+                    renderItem={renderUser}
+                    keyExtractor={(item) => item.uid}
+                    contentContainerStyle={styles.listContainer}
+                    ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>No se encontraron usuarios</Text></View>}
+                    keyboardShouldPersistTaps="handled"
+                />
+            </ScrollView>
+
             <UserFormModal visible={editModalVisible} onClose={handleCloseEditModal} onSubmit={handleSaveUser} initialData={selectedUser} saving={saving} />
 
             <ConfirmationModal
@@ -639,12 +642,12 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingBottom: 1,
     },
-    controlsContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, gap: 8 },
+    controlsContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, gap: 8, marginBottom: 10 },
     searchInput: { flex: 1, backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, borderWidth: 1, borderColor: '#d1d5db' },
     addButton: { paddingHorizontal: 12, backgroundColor: '#BE031E'},
     csvButton: { paddingHorizontal: 12, backgroundColor: '#BE031E'},
     listContainer: { paddingHorizontal: 16, paddingBottom: 16 },
-    userCard: { marginBottom: 12 },
+    userCard: { marginBottom: 12, backgroundColor: '#f3f4f6' },
     userHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
     userName: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
     userDetail: { fontSize: 14, color: '#6b7280', marginBottom: 4 },
@@ -671,7 +674,7 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#e5e7eb',
-        backgroundColor: '#f3f4f6',
+        backgroundColor: '#FFFFFF',
         marginBottom: 8,
     },
     csvSectionTitle: {

@@ -165,7 +165,7 @@ export default function ConfiguracionScreen() {
 
                     <Card style={styles.infoCard}>
                         <View style={styles.infoHeader}>
-                            <Ionicons name="information-circle" size={24} color="#FFD000" />
+                            <Ionicons name="information-circle" size={24} color="#C4B000" />
                             <Text style={styles.infoTitle}>Información Importante</Text>
                         </View>
                         <View>
@@ -283,8 +283,8 @@ const styles = StyleSheet.create({
         fontWeight: 'bold'
     },
     infoCard: {
-        backgroundColor: '#FFFBD4',
-        borderColor: '#FFD000',
+        backgroundColor: '#FFFEF2',
+        borderColor: '#C4B000',
         borderWidth: 1,
         marginBottom: 30,
     },
@@ -296,12 +296,12 @@ const styles = StyleSheet.create({
     infoTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#FFD000',
+        color: '#C4B000',
         marginLeft: 8,
     },
     infoText: {
         fontSize: 14,
-        color: '#FFD000',
+        color: '#C4B000',
         lineHeight: 20,
     },
     modalOverlay: {

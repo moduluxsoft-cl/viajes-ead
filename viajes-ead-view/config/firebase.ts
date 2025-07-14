@@ -9,9 +9,8 @@ import {
 } from 'firebase/auth';
 import {Platform} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-if (__DEV__) {
-    setLogLevel("debug");   // 🔊 Muestra cada request/respuesta del SDK
-}
+
+
 // Firebase configuration
 export const firebaseConfig = {
     apiKey: "AIzaSyCo_eMk6NrQEqMB757fgU3FpMjLwBhfI9w",

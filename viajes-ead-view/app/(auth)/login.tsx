@@ -34,6 +34,7 @@ export default function LoginScreen() {
     const [resetLoading, setResetLoading] = useState(false);
     const [resetStatus, setResetStatus] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     // -------------------------------------------
+    const [passwordError, setPasswordError] = useState('');
     useEffect(() => {
         if (logout === 'true') {
             setShowLogoutMessage(true);
@@ -72,14 +73,19 @@ export default function LoginScreen() {
     const handleLogin = async () => {
         if (!validateForm()) return;
 
+        setPasswordError('');
         setLoading(true);
         try {
             await login(email.trim().toLowerCase(), password);
         } catch (error) {
-            const errorMessage = error instanceof FirebaseError
-                ? getErrorMessage(error)
-                : 'Error inesperado';
-            Alert.alert('Error de autenticación', errorMessage);
+            if (error instanceof FirebaseError && error.code === 'auth/invalid-credential') {
+                setPasswordError('Credenciales inválidas. Inténtalo de nuevo.');
+            } else {
+                const errorMessage = error instanceof FirebaseError
+                    ? getErrorMessage(error)
+                    : 'Error inesperado';
+                Alert.alert('Error de autenticación', errorMessage);
+            }
         } finally {
             setLoading(false);
         }
@@ -155,10 +161,18 @@ export default function LoginScreen() {
                                 label="Contraseña"
                                 placeholder="••••••••"
                                 value={password}
-                                onChangeText={setPassword}
+                                onChangeText={(text) => {
+                                    setPassword(text);
+                                    if (passwordError) setPasswordError('');
+                                }}
                                 secureTextEntry
                                 autoComplete="password"
                             />
+
+                            {passwordError ? (
+                                <Text style={styles.passwordErrorText}>{passwordError}</Text>
+                            ) : null}
+
                             <Button
                                 title="Iniciar Sesión"
                                 onPress={handleLogin}
@@ -345,5 +359,12 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 14,
         fontWeight: '600',
+    },
+    passwordErrorText: {
+        color: '#BE031E',
+        fontSize: 14,
+        marginTop: 4,
+        marginBottom: 8,
+        alignSelf: 'flex-start',
     },
 });

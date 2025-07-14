@@ -1,22 +1,41 @@
 // src/services/usersService.ts
-import {collection, deleteDoc, doc, getDocs, query, setDoc, Timestamp, updateDoc, where} from 'firebase/firestore';
-import {auth, db, firebaseConfig} from '@/config/firebase';
-import {UserData} from '@/contexts/AuthContext';
-import {deleteApp, initializeApp} from 'firebase/app';
 import {
-    createUserWithEmailAndPassword,
-    deleteUser,
-    EmailAuthProvider,
+    collection,
+    doc,
+    getDocs,
+    updateDoc,
+    deleteDoc,
+    query,
+    where,
+    setDoc,
+    Timestamp,
+    writeBatch
+} from 'firebase/firestore';
+import { auth, db, firebaseConfig } from '../../config/firebase';
+import { UserData } from '../../contexts/AuthContext';
+import { initializeApp, deleteApp } from 'firebase/app';
+import {
     getAuth,
-    reauthenticateWithCredential,
+    createUserWithEmailAndPassword,
     sendPasswordResetEmail,
+    deleteUser,
+    signInWithEmailAndPassword,
     updateEmail,
-    updatePassword
+    updatePassword,
+    reauthenticateWithCredential,
+    EmailAuthProvider
 } from 'firebase/auth';
 import Papa from 'papaparse';
-import {getFunctions, httpsCallable} from "@firebase/functions";
+import { getFunctions, httpsCallable } from "@firebase/functions";
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Importar AsyncStorage
 
 const usersCollectionRef = collection(db, 'users');
+
+// Constantes para el límite de carga de CSV
+const CSV_UPLOAD_LIMIT = 100; // Máximo de usuarios por hora
+const CSV_UPLOAD_WINDOW_MS = 60 * 60 * 1000; // 1 hora en milisegundos
+const LAST_UPLOAD_KEY = 'lastCsvUploadTimestamp';
+const UPLOAD_COUNT_KEY = 'csvUploadCount';
 
 /**
  * Obtiene todos los usuarios con el rol de 'student'.
@@ -25,7 +44,8 @@ export const obtenerEstudiantes = async (): Promise<UserData[]> => {
     try {
         const q = query(usersCollectionRef, where('role', '==', 'student'));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({uid: doc.id, ...doc.data()} as UserData));
+        const students = querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserData));
+        return students;
     } catch (error) {
         console.error("Error fetching students:", error);
         throw new Error("No se pudo obtener la lista de estudiantes.");
@@ -153,8 +173,6 @@ export const eliminarUsuarioCompleto = async (uid: string): Promise<void> => {
 export const eliminarUsuarioComoAdmin = async (uid: string): Promise<void> => {
     try {
         const functions = getFunctions();
-
-
         const deleteUserFunction = httpsCallable(functions, 'deleteUser');
 
         console.log(`Enviando solicitud para eliminar al usuario: ${uid}`);
@@ -261,6 +279,12 @@ export interface BatchResult {
     errors: { row: number; message: string; data: CSVRow }[];
 }
 
+export interface DeleteBatchResult {
+    successCount: number;
+    errorCount: number;
+    errors: { row: number; message: string; email: string }[];
+}
+
 /**
  * Procesa un archivo CSV para crear usuarios en lote.
  * @param csvString - El contenido del archivo CSV como un string.
@@ -284,6 +308,47 @@ export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchRes
     }
 
     const rows = parseResult.data;
+
+    // Validar si la cantidad de usuarios excede el límite
+    if (rows.length > CSV_UPLOAD_LIMIT) {
+        throw new Error(`Solo puedes cargar un máximo de ${CSV_UPLOAD_LIMIT} usuarios a la vez.`);
+    }
+
+    // Obtener información de la última carga
+    const lastUploadTimestampStr = await AsyncStorage.getItem(LAST_UPLOAD_KEY);
+    const uploadCountStr = await AsyncStorage.getItem(UPLOAD_COUNT_KEY);
+
+    console.log('AsyncStorage - lastUploadTimestampStr:', lastUploadTimestampStr);
+    console.log('AsyncStorage - uploadCountStr:', uploadCountStr);
+
+    const lastUploadTimestamp = lastUploadTimestampStr ? parseInt(lastUploadTimestampStr, 10) : 0;
+    let uploadCount = uploadCountStr ? parseInt(uploadCountStr, 10) : 0;
+    const now = Date.now();
+
+    console.log('Current uploadCount:', uploadCount);
+    console.log('Time since last upload (ms):', now - lastUploadTimestamp);
+    console.log('CSV_UPLOAD_WINDOW_MS:', CSV_UPLOAD_WINDOW_MS);
+
+    // Resetear el contador si ha pasado el tiempo de la ventana
+    if (now - lastUploadTimestamp > CSV_UPLOAD_WINDOW_MS) {
+        console.log('Resetting upload count due to time window expiry.');
+        uploadCount = 0;
+        await AsyncStorage.setItem(UPLOAD_COUNT_KEY, '0'); // Explicitly reset in storage
+        await AsyncStorage.removeItem(LAST_UPLOAD_KEY); // Also remove the timestamp to be clean
+    }
+
+    // Verificar si la carga actual excederá el límite
+    if (uploadCount + rows.length > CSV_UPLOAD_LIMIT) {
+        const timeLeft = Math.ceil((CSV_UPLOAD_WINDOW_MS - (now - lastUploadTimestamp)) / (60 * 1000));
+        console.warn(`CSV Upload Limit Reached: ${uploadCount} + ${rows.length} > ${CSV_UPLOAD_LIMIT}. Time left: ${timeLeft} minutes.`);
+        throw new Error(
+            `Has alcanzado el límite de ${CSV_UPLOAD_LIMIT} usuarios por hora. ` +
+            `Por favor, intenta de nuevo en aproximadamente ${timeLeft} minutos.`
+        );
+    }
+    console.log(`Proceeding with CSV upload. Current count: ${uploadCount}, New users: ${rows.length}. Total after this upload: ${uploadCount + rows.length}`);
+
+
     const secondaryApp = initializeApp(auth.app.options, 'SecondaryAuthForBatch');
     const secondaryAuth = getAuth(secondaryApp);
 
@@ -336,7 +401,7 @@ export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchRes
             console.log(`[Fila ${rowIndex}] Documento en Firestore GUARDADO.`);
 
             result.successCount++;
-            existingEmails.add(row.email);
+            existingEmails.add(row.email); // Añadir al set para evitar duplicados dentro del mismo CSV
 
         } catch (error: any) {
             result.errorCount++;
@@ -347,9 +412,140 @@ export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchRes
                 message = 'La contraseña generada es débil (error interno).';
             }
             result.errors.push({ row: rowIndex, message, data: row });
+            console.error(`[Fila ${rowIndex}] Error al crear usuario ${row.email}:`, error);
         }
+    }
+
+    // Actualizar el contador y el timestamp después de una carga exitosa
+    if (result.successCount > 0) {
+        const newUploadCount = uploadCount + result.successCount;
+        await AsyncStorage.setItem(LAST_UPLOAD_KEY, now.toString());
+        await AsyncStorage.setItem(UPLOAD_COUNT_KEY, newUploadCount.toString());
+        console.log(`AsyncStorage updated: lastUploadTimestamp=${now}, uploadCount=${newUploadCount}`);
     }
 
     await deleteApp(secondaryApp);
     return result;
+};
+
+
+/**
+ * Procesa un archivo CSV para eliminar usuarios en lote.
+ * El CSV debe contener una columna 'email'.
+ * @param csvString - El contenido del archivo CSV como un string.
+ * @returns Un objeto con el resultado del proceso de eliminación.
+ */
+export const eliminarUsuariosDesdeCSV = async (csvString: string): Promise<DeleteBatchResult> => {
+    const result: DeleteBatchResult = {
+        successCount: 0,
+        errorCount: 0,
+        errors: [],
+    };
+
+    console.log("eliminarUsuariosDesdeCSV: Contenido CSV recibido (primeras 200 chars):", csvString.substring(0, 200));
+    console.log("eliminarUsuariosDesdeCSV: Longitud del string CSV:", csvString.length);
+    console.log("eliminarUsuariosDesdeCSV: Contenido CSV completo (para inspección detallada si es corto):", csvString); // Solo para depuración, cuidado con archivos grandes
+
+    // 1. Parsear el CSV
+    const parseResult = Papa.parse<{ email: string }>(csvString, {
+        header: true,
+        skipEmptyLines: true,
+        delimiter: ',',
+    });
+
+    console.log("eliminarUsuariosDesdeCSV: Resultado de Papaparse:", parseResult);
+    console.log("eliminarUsuariosDesdeCSV: Errores de Papaparse:", parseResult.errors);
+
+
+    if (parseResult.errors.length > 0) {
+        // Aquí puedes loguear los errores específicos de Papaparse para más detalles
+        parseResult.errors.forEach(err => console.error("Papaparse Error:", err));
+        throw new Error("El archivo CSV tiene un formato incorrecto o faltan encabezados.");
+    }
+
+    const rows = parseResult.data;
+    const functions = getFunctions();
+    const deleteUserFunction = httpsCallable(functions, 'deleteUser'); // Asumiendo que tienes una Cloud Function para esto
+
+    // 2. Procesar cada fila
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowIndex = i + 2; // +1 por el índice base 0, +1 por la cabecera
+
+        // Validación básica de formato de email
+        if (!row.email || !/\S+@\S+\.\S+/.test(row.email)) {
+            result.errorCount++;
+            result.errors.push({ row: rowIndex, message: 'Formato de email inválido.', email: row.email || '' });
+            continue;
+        }
+
+        try {
+            console.log(`[Fila ${rowIndex}] Intentando eliminar usuario: ${row.email}...`);
+
+            // Buscar el usuario en Firestore para obtener el UID
+            const q = query(usersCollectionRef, where('email', '==', row.email));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                result.errorCount++;
+                result.errors.push({ row: rowIndex, message: 'Usuario no encontrado en Firestore.', email: row.email });
+                console.warn(`[Fila ${rowIndex}] Usuario ${row.email} no encontrado en Firestore.`);
+                continue;
+            }
+
+            const userDoc = querySnapshot.docs[0];
+            const uidToDelete = userDoc.id;
+
+            // Llamar a la Cloud Function para eliminar el usuario de Auth y Firestore
+            await deleteUserFunction({ uid: uidToDelete });
+            console.log(`[Fila ${rowIndex}] Usuario ${row.email} ELIMINADO.`);
+
+            result.successCount++;
+
+        } catch (error: any) {
+            result.errorCount++;
+            let message = "Error desconocido al eliminar el usuario.";
+            if (error.code === 'functions/not-found') {
+                message = 'La función de eliminación no está configurada correctamente.';
+            } else if (error.code === 'functions/permission-denied') {
+                message = 'Permiso denegado para eliminar este usuario.';
+            } else if (error.message.includes('auth/user-not-found')) { // Mensaje de error de la Cloud Function
+                message = 'Usuario no encontrado en Firebase Authentication.';
+            }
+            result.errors.push({ row: rowIndex, message, email: row.email });
+            console.error(`Error procesando fila ${rowIndex} (${row.email}):`, error);
+        }
+    }
+    return result;
+};
+
+/**
+ * Obtiene el estado actual del límite de carga de CSV.
+ * @returns Un objeto con el recuento actual y el tiempo restante en minutos.
+ */
+export const getCsvUploadLimitStatus = async (): Promise<{ count: number; timeLeftMinutes: number }> => {
+    const lastUploadTimestampStr = await AsyncStorage.getItem(LAST_UPLOAD_KEY);
+    const uploadCountStr = await AsyncStorage.getItem(UPLOAD_COUNT_KEY);
+
+    const lastUploadTimestamp = lastUploadTimestampStr ? parseInt(lastUploadTimestampStr, 10) : 0;
+    let uploadCount = uploadCountStr ? parseInt(uploadCountStr, 10) : 0;
+    const now = Date.now();
+
+    let timeLeftMinutes = 0;
+
+    console.log('getCsvUploadLimitStatus: lastUploadTimestamp', lastUploadTimestamp, 'uploadCount', uploadCount, 'now', now);
+
+    // Si ha pasado más de una hora desde la última carga, resetear el contador
+    if (now - lastUploadTimestamp > CSV_UPLOAD_WINDOW_MS) {
+        console.log('getCsvUploadLimitStatus: Resetting count due to window expiry.');
+        uploadCount = 0;
+        await AsyncStorage.setItem(UPLOAD_COUNT_KEY, '0'); // Ensure it's reset in storage
+        await AsyncStorage.removeItem(LAST_UPLOAD_KEY); // Also remove the timestamp to be clean
+    } else {
+        // Calcular el tiempo restante si estamos dentro de la ventana
+        timeLeftMinutes = Math.ceil((CSV_UPLOAD_WINDOW_MS - (now - lastUploadTimestamp)) / (60 * 1000));
+        console.log('getCsvUploadLimitStatus: Time left (minutes)', timeLeftMinutes);
+    }
+
+    return { count: uploadCount, timeLeftMinutes };
 };

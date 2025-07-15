@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, Text, Modal, StyleSheet, ScrollView } from 'react-native';
+import {View, Text, Modal, StyleSheet, ScrollView, ActivityIndicator} from 'react-native';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 // Importamos las interfaces que necesitamos desde el servicio
-import { Pase, Viaje } from '../src/services/viajesService';
+import { Pase, Viaje } from '@/src/services/viajesService';
 
 // 1. Definimos el tipo para el objeto scanResult que viene del scanner
 type ScanResult = {
@@ -18,24 +18,22 @@ type ScanResult = {
 interface ResultModalProps {
     visible: boolean;
     onClose: () => void;
-    onValidate: () => void;
     validating: boolean;
     scanResult: ScanResult;
-    showValidateButton: boolean;
 }
 
 export const ResultModal: React.FC<ResultModalProps> = ({
                                                             visible,
                                                             onClose,
-                                                            onValidate,
                                                             validating,
                                                             scanResult,
-                                                            showValidateButton,
                                                         }) => {
     // 3. Desestructuramos las propiedades desde el objeto scanResult
     const { success, pase, viaje, error, message } = scanResult;
 
-    const modalTitle = message ? 'Resultado de Validación' : (success ? 'Pase Válido' : 'Pase Inválido');
+    console.log("ResultModal - Resultado: ", scanResult)
+
+    const modalTitle = success ? 'Pase Válido' : 'Pase Inválido';
 
     return (
         <Modal
@@ -46,52 +44,51 @@ export const ResultModal: React.FC<ResultModalProps> = ({
         >
             <View style={styles.overlay}>
                 <Card style={styles.modal}>
-                    <ScrollView showsVerticalScrollIndicator={false}>
-                        <View style={[styles.iconContainer, success ? styles.successBg : styles.errorBg]}>
-                            <Text style={styles.icon}>{success ? '✓' : '✗'}</Text>
-                        </View>
-
-                        <Text style={styles.title}>{modalTitle}</Text>
-
-                        {/* Si hay un mensaje final (ej: "Pase validado"), lo mostramos */}
-                        {message && (
-                            <Text style={styles.successMessage}>{message}</Text>
-                        )}
-
-                        {/* Si el escaneo inicial fue exitoso, mostramos los detalles del pase y el viaje */}
-                        {success && pase && viaje ? (
-                            <View style={styles.details}>
-                                <DetailRow label="Estudiante" value={pase.nombreCompleto} />
-                                <DetailRow label="RUT" value={pase.rut} />
-                                <DetailRow label="Destino del Viaje" value={viaje.destino} />
-                                <DetailRow label="Fecha del Viaje" value={viaje.fechaViaje.toLocaleDateString('es-CL')} />
-                                <DetailRow label="Estado Actual" value={pase.estado.toUpperCase()} />
+                    <ScrollView showsVerticalScrollIndicator={true}>
+                        {validating ? (
+                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
+                                <ActivityIndicator size="large" color="#BE031E" />
+                                <Text style={{ marginTop: 16, color: "#111827", fontSize: 16 }}>Validando pase...</Text>
                             </View>
                         ) : (
-                            // Si no fue exitoso y no hay mensaje final, mostramos el error
-                            !message && (
-                                <Text style={styles.errorMessage}>
-                                    {error || 'Código QR inválido o expirado'}
-                                </Text>
-                            )
-                        )}
+                            <>
+                                <View style={[styles.iconContainer, success ? styles.successBg : styles.errorBg]}>
+                                    <Text style={styles.icon}>{success ? '✓' : '✗'}</Text>
+                                </View>
 
-                        <View style={styles.buttonContainer}>
-                            {/* El botón de validar se muestra si el escaneo fue exitoso y no hay un mensaje final */}
-                            {success && showValidateButton && (
-                                <Button
-                                    title="Confirmar Validación"
-                                    onPress={onValidate}
-                                    loading={validating}
-                                    style={[styles.button, styles.validateButton]}
-                                />
-                            )}
-                            <Button
-                                title="Cerrar"
-                                onPress={onClose}
-                                style={[styles.button, styles.closeButton]}
-                            />
-                        </View>
+                                <Text style={styles.title}>{modalTitle}</Text>
+
+                                {/* Si hay un mensaje final (ej: "Pase validado"), lo mostramos */}
+                                {success &&  message && (
+                                    <Text style={styles.successMessage}>{message}</Text>
+                                )}
+
+                                {/* Si el escaneo inicial fue exitoso, mostramos los detalles del pase y el viaje */}
+                                {success && pase && viaje ? (
+                                    <View style={styles.details}>
+                                        <DetailRow label="Estudiante" value={pase.nombreCompleto} />
+                                        <DetailRow label="RUT" value={pase.rut} />
+                                        <DetailRow label="Destino del Viaje" value={viaje.destino} />
+                                        {/*<DetailRow label="Fecha del Viaje" value={viaje.fechaViaje.toLocaleDateString('es-CL')} />*/}
+                                        {/*<DetailRow label="Estado Actual" value={pase.estado.toUpperCase()} />*/}
+                                    </View>
+                                ) : (
+                                    // Si no fue exitoso y no hay mensaje final, mostramos el error
+                                    <Text style={styles.errorMessage}>
+                                        {error ? error : 'Código QR inválido o expirado'}
+                                    </Text>
+                                )}
+
+                                <View style={styles.buttonContainer}>
+                                    {/* El botón de validar se muestra si el escaneo fue exitoso y no hay un mensaje final */}
+                                    <Button
+                                        title="Cerrar"
+                                        onPress={onClose}
+                                        style={[styles.button, styles.closeButton]}
+                                    />
+                                </View>
+                            </>
+                        )}
                     </ScrollView>
                 </Card>
             </View>

@@ -7,10 +7,13 @@ import {Card} from '@/components/ui/Card';
 import {Button} from '@/components/ui/Button';
 import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
 import {crearPase, obtenerPasesEstudiante, obtenerViajeActivo, Pase, Viaje} from '@/src/services/viajesService';
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 export default function StudentHomeScreen() {
     // Se elimina la función 'logout' de useAuth porque ya no se usa aquí.
     const { userData, loading: authLoading } = useAuth();
+    const functions = getFunctions();
+    const enviarCorreoConQR = httpsCallable(functions, "enviarCorreoConQR");
 
     const [viajeActivo, setViajeActivo] = useState<Viaje | null>(null);
     const [currentPase, setCurrentPase] = useState<Pase | null>(null);
@@ -56,16 +59,19 @@ export default function StudentHomeScreen() {
     const handleCrearPase = async () => {
         if (!viajeActivo || !userData) return;
         setIsCreatingPase(true);
-        try {
-            await crearPase(userData, viajeActivo);
-            Alert.alert('¡Éxito!', 'Tu pase se ha generado correctamente.');
+
+        await crearPase(userData, viajeActivo).then(async ({paseId, encryptedQRData}) => {
+            await enviarCorreoConQR({email: userData.email, contenidoQR: encryptedQRData}).then(async () => {
+                Alert.alert('¡Éxito!', 'Tu pase se ha generado correctamente, se te ha enviado un correo con el QR adjunto.');
+            }).catch(async (error) => {
+                Alert.alert('¡Éxito!', 'Tu pase se ha generado correctamente, pero hubo un error al enviar el QR adjunto. Puedes seguir ocupando el QR disponible aquí.');
+            })
+        }).catch(async (error) => {
+            Alert.alert('Error generando el pase: ', error.message);
+        }).finally(async () => {
             await loadInitialData();
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'No se pudo crear el pase.';
-            Alert.alert('Error', message);
-        } finally {
             setIsCreatingPase(false);
-        }
+        });
     };
 
     if (authLoading || (loading && !refreshing)) {

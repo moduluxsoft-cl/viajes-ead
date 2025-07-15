@@ -8,8 +8,44 @@
  *
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUser = exports.testDeleteInactiveTravelsAndPases = exports.deleteInactiveTravelsAndPasesWeekly = exports.testUpdateTravelDate = exports.updateTravelDateWeekly = void 0;
+exports.deleteUser = exports.testDeleteInactiveTravelsAndPases = exports.deleteInactiveTravelsAndPasesWeekly = exports.testUpdateTravelDate = exports.updateTravelDateWeekly = exports.enviarCorreoConQR = void 0;
 const firebase_functions_1 = require("firebase-functions");
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -30,8 +66,50 @@ const firestore_1 = require("firebase-admin/firestore");
 const https_1 = require("firebase-functions/https");
 const https_2 = require("firebase-functions/v2/https");
 const auth_1 = require("firebase-admin/auth");
+const nodemailer = __importStar(require("nodemailer"));
+const qrcode_1 = __importDefault(require("qrcode"));
 (0, app_1.initializeApp)();
 const db = (0, firestore_1.getFirestore)();
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'buses@ead.cl',
+        pass: 'AIzaSyCo_eMk6NrQEqMB757fgU3FpMjLwBhfI9w'
+    }
+});
+exports.enviarCorreoConQR = (0, https_2.onCall)(async (request) => {
+    console.log("enviarCorreoConQR contenido: ", request.data);
+    try {
+        const { email, contenidoQR } = request.data;
+        if (!email || !contenidoQR) {
+            throw new https_2.HttpsError("invalid-argument", "Se necesita un email y un contenidoQR");
+        }
+        // Genera el QR en base64 (como imagen PNG)
+        const qrDataUrl = await qrcode_1.default.toDataURL(contenidoQR);
+        const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, "");
+        // Prepara el email con el adjunto
+        const mailOptions = {
+            from: "buses@ead.cl",
+            to: email,
+            subject: "Tu código QR solicitado",
+            text: "Adjuntamos tu código QR.",
+            attachments: [
+                {
+                    filename: "qr.png",
+                    content: base64Data,
+                    encoding: "base64"
+                }
+            ]
+        };
+        // Envía el email
+        await transporter.sendMail(mailOptions);
+        return { success: true };
+    }
+    catch (error) {
+        console.error("Error al enviar el email:", error);
+        return { success: false };
+    }
+});
 exports.updateTravelDateWeekly = (0, scheduler_1.onSchedule)({
     schedule: '0 16 * * *',
     timeZone: 'America/Santiago',

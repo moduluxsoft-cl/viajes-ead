@@ -1,5 +1,5 @@
 // app/(validator)/scanner.tsx
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { QRScanner } from '@/components/QRScanner';
 import { ResultModal } from '@/components/ResultModal';
@@ -19,7 +19,6 @@ export default function ScannerScreen() {
     const [scanning, setScanning] = useState(false);
     const [showResult, setShowResult] = useState(false);
     const [validating, setValidating] = useState(false);
-
     const [scanResult, setScanResult] = useState<{
         success: boolean;
         pase?: Pase;
@@ -30,8 +29,11 @@ export default function ScannerScreen() {
 
     const handleQRScanned = async (qrCodeData: string) => {
         setScanning(false);
+        setValidating(true);
+        setShowResult(true);
         try {
             const decryptedData = decryptQRData(qrCodeData);
+
             if (!decryptedData.paseId) {
                 throw new Error("El código QR no contiene un ID de pase válido.");
             }
@@ -45,34 +47,29 @@ export default function ScannerScreen() {
                 throw new Error(`Este pase no es para el viaje de hoy. Es para el ${fechaViaje.toLocaleDateString('es-CL')}.`);
             }
 
-            setScanResult({ success: true, pase, viaje });
+            await handleValidatePase(pase, viaje);
 
         } catch (error) {
             setScanResult({
                 success: false,
                 error: error instanceof Error ? error.message : 'Código QR inválido o error inesperado.'
             });
-        }
-        setShowResult(true);
-    };
-
-    const handleValidatePase = async () => {
-        if (!scanResult.pase?.id) return;
-
-        setValidating(true);
-        try {
-            const validationResult = await validarPaseConteo(scanResult.pase.id);
-            if (!validationResult.success) {
-                throw new Error(validationResult.message);
-            }
-            // Actualizamos el estado con el mensaje de éxito
-            setScanResult(prev => ({ ...prev, success: true, message: validationResult.message }));
-        } catch (error) {
-            // Actualizamos el estado con el mensaje de error
-            setScanResult(prev => ({ ...prev, success: false, error: error instanceof Error ? error.message : 'Error al validar' }));
-        } finally {
             setValidating(false);
         }
+    };
+
+    const handleValidatePase = async (pase: Pase, viaje: Viaje) => {
+        if (!pase?.id) return;
+
+        await validarPaseConteo(pase.id).then((validationResult) => {
+            console.log("validarPaseConteo ejecutado correctamente: ", validationResult);
+            setScanResult({ ...validationResult, viaje });
+        }).catch(error => {
+            console.log("error al ejecutar validarPaseConteo: ", error);
+            setScanResult({ success: false, error: error.message });
+        }).finally(() => {
+            setValidating(false);
+        });
     };
 
     const resetScanner = () => {
@@ -103,10 +100,8 @@ export default function ScannerScreen() {
             <ResultModal
                 visible={showResult}
                 onClose={resetScanner}
-                onValidate={handleValidatePase}
                 validating={validating}
                 scanResult={scanResult}
-                showValidateButton={scanResult.success && !scanResult.message}
             />
         </SafeAreaView>
     );

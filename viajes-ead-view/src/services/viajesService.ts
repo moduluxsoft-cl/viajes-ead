@@ -144,7 +144,7 @@ export const sobrescribirViajeActivo = async (
 
 
 
-export const validarPaseConteo = async (paseId: string): Promise<{ success: boolean; message: string; pase?: Pase }> => {
+export const validarPaseConteo = async (paseId: string): Promise<{ success: boolean; message?: string; pase?: Pase; error?: string }> => {
     const paseRef = doc(db, 'pases', paseId);
     try {
         const resultado = await runTransaction(db, async (transaction) => {
@@ -182,7 +182,7 @@ export const validarPaseConteo = async (paseId: string): Promise<{ success: bool
 
     } catch (error) {
         const message = error instanceof Error ? error.message : "Ocurrió un error inesperado al validar.";
-        return { success: false, message };
+        return { success: false, error: message };
     }
 };
 
@@ -258,7 +258,10 @@ export const obtenerDetallesCompletosPase = async (paseId: string): Promise<{ pa
     return { pase, viaje };
 };
 
-export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise<string> => {
+export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise<{
+    paseId: string;
+    encryptedQRData: string
+}> => {
     if (!userData.nombre || !userData.apellido || !userData.rut || !userData.carrera) {
         throw new Error('Tu información de perfil está incompleta.');
     }
@@ -300,7 +303,7 @@ export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise
             transaction.set(paseDocRef, nuevoPase);
             transaction.update(viajeRef, {GENERATED_PASSES: increment(1)});
 
-            return paseId;
+            return { paseId, encryptedQRData };
         });
     } catch (error) {
         console.error('Error en la transacción al crear el pase:', error);

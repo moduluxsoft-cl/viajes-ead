@@ -36,9 +36,62 @@ import {getAuth} from "firebase-admin/auth";
 import firebase = require("firebase-admin");
 import QueryDocumentSnapshot = firebase.firestore.QueryDocumentSnapshot;
 import DocumentData = firebase.firestore.DocumentData;
+import * as nodemailer from 'nodemailer';
+import QRCode from "qrcode"
 
 initializeApp();
 const db = getFirestore();
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'buses@ead.cl',
+        pass: 'AIzaSyCo_eMk6NrQEqMB757fgU3FpMjLwBhfI9w'
+    }
+});
+
+export const enviarCorreoConQR = onCall(async (request) => {
+    console.log("enviarCorreoConQR contenido: ",request.data)
+
+    try {
+        const { email, contenidoQR } = request.data;
+
+        if (!email || !contenidoQR) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Se necesita un email y un contenidoQR"
+            );
+        }
+
+        // Genera el QR en base64 (como imagen PNG)
+        const qrDataUrl = await QRCode.toDataURL(contenidoQR);
+        const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, "");
+
+        // Prepara el email con el adjunto
+        const mailOptions = {
+            from: "buses@ead.cl",
+            to: email,
+            subject: "Tu código QR solicitado",
+            text: "Adjuntamos tu código QR.",
+            attachments: [
+                {
+                    filename: "qr.png",
+                    content: base64Data,
+                    encoding: "base64"
+                }
+            ]
+        };
+
+        // Envía el email
+        await transporter.sendMail(mailOptions);
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error al enviar el email:", error);
+        return { success: false };
+    }
+});
+
 
 export const updateTravelDateWeekly = onSchedule(
     {

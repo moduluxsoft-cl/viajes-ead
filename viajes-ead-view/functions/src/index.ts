@@ -37,21 +37,42 @@ import firebase = require("firebase-admin");
 import QueryDocumentSnapshot = firebase.firestore.QueryDocumentSnapshot;
 import DocumentData = firebase.firestore.DocumentData;
 import * as nodemailer from 'nodemailer';
-import QRCode from "qrcode"
+import QRCode from "qrcode";
+import {google} from "googleapis";
 
 initializeApp();
 const db = getFirestore();
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: 'buses@ead.cl',
-        pass: 'AIzaSyCo_eMk6NrQEqMB757fgU3FpMjLwBhfI9w'
-    }
-});
+// Configuración de OAuth2
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
+const USER_EMAIL = process.env.USER_EMAIL;
+const REDIRECT_URI = "https://developers.google.com/oauthplayground";
 
 export const enviarCorreoConQR = onCall(async (request) => {
+    const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+    oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
+
     console.log("enviarCorreoConQR contenido: ",request.data)
+
+    if (CLIENT_ID === undefined || CLIENT_SECRET === undefined || REFRESH_TOKEN === undefined || USER_EMAIL === undefined) {
+        console.error("No se han configurado las credenciales de Gmail.")
+    }
+
+    const accessToken = await oAuth2Client.getAccessToken();
+
+    const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            type: "OAuth2",
+            user: USER_EMAIL,
+            clientId: CLIENT_ID,
+            clientSecret: CLIENT_SECRET,
+            refreshToken: REFRESH_TOKEN,
+            accessToken: accessToken.token || "",
+        },
+    });
 
     try {
         const { email, contenidoQR } = request.data;
@@ -69,7 +90,7 @@ export const enviarCorreoConQR = onCall(async (request) => {
 
         // Prepara el email con el adjunto
         const mailOptions = {
-            from: "buses@ead.cl",
+            from: USER_EMAIL,
             to: email,
             subject: "Tu código QR solicitado",
             text: "Adjuntamos tu código QR.",

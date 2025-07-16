@@ -68,17 +68,34 @@ const https_2 = require("firebase-functions/v2/https");
 const auth_1 = require("firebase-admin/auth");
 const nodemailer = __importStar(require("nodemailer"));
 const qrcode_1 = __importDefault(require("qrcode"));
+const googleapis_1 = require("googleapis");
 (0, app_1.initializeApp)();
 const db = (0, firestore_1.getFirestore)();
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: 'buses@ead.cl',
-        pass: 'AIzaSyCo_eMk6NrQEqMB757fgU3FpMjLwBhfI9w'
-    }
-});
+// Configuración de OAuth2
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
+const USER_EMAIL = process.env.USER_EMAIL;
+const REDIRECT_URI = "https://developers.google.com/oauthplayground";
 exports.enviarCorreoConQR = (0, https_2.onCall)(async (request) => {
+    const oAuth2Client = new googleapis_1.google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+    oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
     console.log("enviarCorreoConQR contenido: ", request.data);
+    if (CLIENT_ID === undefined || CLIENT_SECRET === undefined || REFRESH_TOKEN === undefined || USER_EMAIL === undefined) {
+        console.error("No se han configurado las credenciales de Gmail.");
+    }
+    const accessToken = await oAuth2Client.getAccessToken();
+    const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            type: "OAuth2",
+            user: USER_EMAIL,
+            clientId: CLIENT_ID,
+            clientSecret: CLIENT_SECRET,
+            refreshToken: REFRESH_TOKEN,
+            accessToken: accessToken.token || "",
+        },
+    });
     try {
         const { email, contenidoQR } = request.data;
         if (!email || !contenidoQR) {
@@ -89,7 +106,7 @@ exports.enviarCorreoConQR = (0, https_2.onCall)(async (request) => {
         const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, "");
         // Prepara el email con el adjunto
         const mailOptions = {
-            from: "buses@ead.cl",
+            from: USER_EMAIL,
             to: email,
             subject: "Tu código QR solicitado",
             text: "Adjuntamos tu código QR.",

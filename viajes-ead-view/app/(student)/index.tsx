@@ -61,12 +61,15 @@ export default function StudentHomeScreen() {
         setIsCreatingPase(true);
 
         await crearPase(userData, viajeActivo).then(async ({paseId, encryptedQRData}) => {
-            await enviarCorreoConQR({email: userData.email, contenidoQR: encryptedQRData}).then(async () => {
+            await enviarCorreoConQR({email: userData.email, contenidoQR: encryptedQRData}).then(async (res) => {
+                console.log(res);
                 Alert.alert('¡Éxito!', 'Tu pase se ha generado correctamente, se te ha enviado un correo con el QR adjunto.');
             }).catch(async (error) => {
+                console.log(error);
                 Alert.alert('¡Éxito!', 'Tu pase se ha generado correctamente, pero hubo un error al enviar el QR adjunto. Puedes seguir ocupando el QR disponible aquí.');
             })
         }).catch(async (error) => {
+            console.log(error);
             Alert.alert('Error generando el pase: ', error.message);
         }).finally(async () => {
             await loadInitialData();

@@ -25,27 +25,25 @@ import {
 } from 'firebase/auth';
 import Papa from 'papaparse';
 import { getFunctions, httpsCallable } from "@firebase/functions";
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Importar AsyncStorage
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const usersCollectionRef = collection(db, 'users');
 
-// Constantes para el límite de carga de CSV
-const CSV_UPLOAD_LIMIT = 100; // Máximo de usuarios por hora
-const CSV_UPLOAD_WINDOW_MS = 60 * 60 * 1000; // 1 hora en milisegundos
+const CSV_UPLOAD_LIMIT = 100;
+const CSV_UPLOAD_WINDOW_MS = 60 * 60 * 1000;
 const LAST_UPLOAD_KEY = 'lastCsvUploadTimestamp';
 const UPLOAD_COUNT_KEY = 'csvUploadCount';
 
 /**
  * Obtiene todos los usuarios con el rol de 'student'.
  */
-export const obtenerEstudiantes = async (): Promise<UserData[]> => {
+export const obtenerUsuariosGestionables = async (): Promise<UserData[]> => {
     try {
-        const q = query(usersCollectionRef, where('role', '==', 'student'));
+        const q = query(usersCollectionRef, where('role', 'in', ['student', 'validator']));
         const querySnapshot = await getDocs(q);
         const students = querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserData));
         return students;
     } catch (error) {
-        console.error("Error fetching students:", error);
         throw new Error("No se pudo obtener la lista de estudiantes.");
     }
 };

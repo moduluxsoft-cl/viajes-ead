@@ -73,77 +73,70 @@ export const obtenerViajeActivo = async (): Promise<Viaje | null> => {
 export const sobrescribirViajeActivo = async (
     config: { destino: string; fechaViaje: Date; capacidadMaxima: number }
 ) => {
-    console.log("🟡 [viajesService]  ➡️  sobrescribirViajeActivo()", config);
+    console.log("[viajesService] sobrescribirViajeActivo() con ID incremental", config);
 
-    /* ---------- 0. VALIDACIONES RÁPIDAS ---------- */
     if (!config.destino || !config.fechaViaje || config.capacidadMaxima == null) {
-        console.error("🔴 Datos incompletos", config);
+        console.error("Datos incompletos", config);
         throw new Error("Datos de configuración incompletos.");
     }
 
-    /* ---------- 1. CANCELAR VIAJES ABIERTOS ---------- */
-    const abiertos = await getDocs(
-        query(collection(db, "viajes"), where("STATE", "==", "ABIERTO"))
-    );
-    console.log(`🟠 Viajes ABIERTO encontrados: ${abiertos.size}`);
+    const abiertosQuery = query(collection(db, "viajes"), where("STATE", "==", "ABIERTO"));
+    const abiertosSnap = await getDocs(abiertosQuery);
+    console.log(`Viajes "ABIERTO" encontrados para cancelar: ${abiertosSnap.size}`);
 
-    const batchCancel = writeBatch(db);
-    abiertos.forEach((snap) => {
-        console.log("   ⤷ Marcando CANCELADO:", snap.id);
-        batchCancel.update(snap.ref, { STATE: "CANCELADO" });
-    });
-
-    try {
-        if (!abiertos.empty) {
-            console.log("🟠 Commit batchCancel…");
+    if (!abiertosSnap.empty) {
+        const batchCancel = writeBatch(db);
+        abiertosSnap.forEach((snap) => {
+            console.log(`Marcando como CANCELADO: ${snap.id}`);
+            batchCancel.update(snap.ref, { STATE: "CANCELADO" });
+        });
+        try {
             await batchCancel.commit();
-            console.log("🟢 batchCancel OK");
+            console.log("Viajes anteriores cancelados con éxito.");
+        } catch (err) {
+            console.error("Error al cancelar viajes anteriores:", err);
+            throw err;
         }
-    } catch (err: any) {
-        console.error("🔴 batchCancel ERROR", err.code, err.message);
-        throw err;
     }
-
-    /* ---------- 2. CREAR NUEVO VIAJE ---------- */
-    const baseId = `viaje_${config.fechaViaje.toISOString().substring(0, 10)}`;
-    let viajeId = baseId;
-    let viajeRef = doc(db, "viajes", viajeId);
-
-    if ((await getDoc(viajeRef)).exists()) {
-        const rnd = Math.floor(1000 + Math.random() * 9000);
-        viajeId = `${baseId}_${rnd}`;
-        viajeRef = doc(db, "viajes", viajeId);
-        console.log(`⚠️  Colisión de ID. Usaré ${viajeId}`);
-    }
-
-    const data = {
-        DESTINATION: config.destino,
-        MAX_CAPACITY: Number(config.capacidadMaxima),
-        DATE_TRAVEL: Timestamp.fromDate(config.fechaViaje),
-        GENERATED_PASSES: 0,
-        STATE: "ABIERTO",
-    };
-
-    const batchCreate = writeBatch(db);
-    batchCreate.set(viajeRef, data);
 
     try {
-        console.log("🟠 Commit batchCreate…", { id: viajeId, ...data });
-        await batchCreate.commit();
-        console.log("🟢 batchCreate OK. Nuevo viaje activo:", viajeId);
-    } catch (err: any) {
-        console.error(
-            "🔴 batchCreate ERROR",
-            { code: err.code, message: err.message },
-            err
-        );
-        throw err;
+        await runTransaction(db, async (transaction) => {
+            // Referencia al documento que actúa como nuestro contador.
+            const counterRef = doc(db, 'counters', 'viajes_counter');
+
+            const counterDoc = await transaction.get(counterRef);
+
+            const currentNumber = counterDoc.exists() ? counterDoc.data().currentNumber : 0;
+
+            const newTripNumber = currentNumber + 1;
+
+            const nuevoViajeId = `viajes-${newTripNumber}`;
+            const nuevoViajeRef = doc(db, "viajes", nuevoViajeId);
+
+            console.log(`Preparando para crear nuevo viaje con ID: ${nuevoViajeId}`);
+
+            const dataNuevoViaje = {
+                DESTINATION: config.destino,
+                MAX_CAPACITY: Number(config.capacidadMaxima),
+                DATE_TRAVEL: Timestamp.fromDate(config.fechaViaje),
+                GENERATED_PASSES: 0,
+                STATE: "ABIERTO",
+                TRIP_NUMBER: newTripNumber,
+            };
+
+            transaction.set(nuevoViajeRef, dataNuevoViaje);
+
+            transaction.set(counterRef, { currentNumber: newTripNumber }, { merge: true });
+        });
+
+        console.log(`Transacción completada. Nuevo viaje activo creado con éxito.`);
+
+    } catch (error) {
+        console.error("La transacción para crear el viaje falló:", error);
+        // Si la transacción falla, se lanza un error para que el frontend pueda manejarlo.
+        throw new Error("No se pudo crear el nuevo viaje. Inténtalo de nuevo.");
     }
 };
-
-
-
-
 export const validarPaseConteo = async (paseId: string): Promise<{ success: boolean; message?: string; pase?: Pase; error?: string }> => {
     const paseRef = doc(db, 'pases', paseId);
     try {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, StyleSheet, TextInput, Switch, Alert, ScrollView } from 'react-native';
 import { Button } from '../ui/Button';
 import { Picker } from '@react-native-picker/picker';
-import { UserData } from '@/contexts/AuthContext';
+import {useAuth, UserData} from '@/contexts/AuthContext';
 import { getPropertyValues } from '@/src/services/configuracionService';
 
 interface Props {
@@ -23,6 +23,7 @@ interface ValidationErrors {
 }
 
 export const UserFormModal = ({ visible, onClose, onSubmit, initialData, saving }: Props) => {
+    const { userData: currentUser } = useAuth();
     const getInitialState = (): Partial<UserData> => ({
         nombre: initialData?.nombre || '',
         apellido: initialData?.apellido || '',
@@ -30,7 +31,7 @@ export const UserFormModal = ({ visible, onClose, onSubmit, initialData, saving 
         rut: initialData?.rut || '',
         carrera: initialData?.carrera || '',
         activo: initialData ? initialData.activo : true,
-        role: 'student',
+        role: initialData?.role || 'student',
     });
 
     const [user, setUser] = useState<Partial<UserData>>(getInitialState);
@@ -38,7 +39,6 @@ export const UserFormModal = ({ visible, onClose, onSubmit, initialData, saving 
     const [carreras, setCarreras] = useState<string[]>([]);
     const [errors, setErrors] = useState<ValidationErrors>({});
 
-    // Cargar la lista de carreras desde Firestore
     useEffect(() => {
         if (visible) {
             getPropertyValues("CARRERA")
@@ -180,8 +180,9 @@ export const UserFormModal = ({ visible, onClose, onSubmit, initialData, saving 
 
     const handleUserChange = (field: string, value: string) => {
         setUser(u => ({ ...u, [field]: value }));
-        validateField(field, value);
-    };
+        if (typeof value === 'string' && ['nombre', 'apellido', 'email', 'rut', 'carrera'].includes(field)) {
+            validateField(field, value);
+        }    };
 
     const handlePasswordChange = (value: string) => {
         setPassword(value);
@@ -260,7 +261,20 @@ export const UserFormModal = ({ visible, onClose, onSubmit, initialData, saving 
                             </Picker>
                         </View>
                         {errors.carrera && <Text style={styles.errorText}>{errors.carrera}</Text>}
-
+                        {currentUser?.role === 'admin' && (
+                            <>
+                                <Text style={styles.label}>Rol de Usuario</Text>
+                                <View style={styles.pickerContainer}>
+                                    <Picker
+                                        selectedValue={user.role}
+                                        onValueChange={(itemValue) => handleUserChange('role', itemValue)}
+                                    >
+                                        <Picker.Item label="Estudiante" value="student" />
+                                        <Picker.Item label="Validador" value="validator" />
+                                    </Picker>
+                                </View>
+                            </>
+                        )}
                         <View style={styles.switchContainer}>
                             <Text style={styles.label}>Usuario Activo</Text>
                             <Switch value={!!user.activo} onValueChange={v => setUser(u => ({ ...u, activo: v }))} />

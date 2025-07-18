@@ -21,7 +21,7 @@ import {useAuth, UserData} from '@/contexts/AuthContext';
 import {UserFormModal} from '@/components/forms/UserFormModal';
 import {CSVResultModal} from '@/components/modals/CSVResultModal';
 import {
-    obtenerEstudiantes,
+    obtenerUsuariosGestionables,
     crearUsuario,
     actualizarUsuario,
     desactivarUsuario,
@@ -29,10 +29,10 @@ import {
     enviarEmailRecuperacion,
     eliminarUsuarioComoAdmin,
     crearUsuariosDesdeCSV,
-    eliminarUsuariosDesdeCSV, // Importar la nueva función
-    getCsvUploadLimitStatus, // Importar la nueva función
+    eliminarUsuariosDesdeCSV,
+    getCsvUploadLimitStatus,
     BatchResult,
-    DeleteBatchResult // Importar el nuevo tipo
+    DeleteBatchResult
 } from '@/src/services/usersService';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -215,7 +215,7 @@ export default function UsersScreen() {
         setLoading(true);
         console.log("Loading users...");
         try {
-            const usersData = await obtenerEstudiantes();
+            const usersData = await obtenerUsuariosGestionables();
             setUsers(usersData);
             setFilteredUsers(usersData);
             console.log("Users loaded successfully.");
@@ -493,6 +493,7 @@ export default function UsersScreen() {
     const renderUser = ({ item }: { item: UserData }) => {
         const isUpdatingThisUser = updatingUserId === item.uid;
         const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
+        const displayRole = item.role.charAt(0).toUpperCase() + item.role.slice(1);
 
         return (
             <Card style={styles.userCard}>
@@ -650,6 +651,13 @@ const styles = StyleSheet.create({
     userCard: { marginBottom: 12, backgroundColor: '#f3f4f6' },
     userHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
     userName: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
+    userRoleText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#4f46e5',
+        marginBottom: 6,
+        fontStyle: 'italic',
+    },
     userDetail: { fontSize: 14, color: '#6b7280', marginBottom: 4 },
     statusIndicator: { width: 12, height: 12, borderRadius: 6 },
     activeStatus: { backgroundColor: '#10b981' },

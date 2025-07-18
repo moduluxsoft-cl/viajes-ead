@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: cd .\viajes-ead-view\
       - run: npm run patch-install
       - run: npm run build-web
       - uses: FirebaseExtended/action-hosting-deploy@v0

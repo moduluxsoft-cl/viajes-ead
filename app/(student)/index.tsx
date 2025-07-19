@@ -1,6 +1,5 @@
-// app/(student)/index.tsx
 import React, {useCallback, useEffect, useState} from 'react';
-import {Alert, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {useAuth} from '@/contexts/AuthContext';
 import {QRGenerator} from '@/components/QRGenerator';
 import {Card} from '@/components/ui/Card';
@@ -8,6 +7,8 @@ import {Button} from '@/components/ui/Button';
 import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
 import {crearPase, obtenerPasesEstudiante, obtenerViajeActivo, Pase, Viaje} from '@/src/services/viajesService';
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function StudentHomeScreen() {
     // Se elimina la función 'logout' de useAuth porque ya no se usa aquí.
@@ -63,14 +64,14 @@ export default function StudentHomeScreen() {
         await crearPase(userData, viajeActivo).then(async ({paseId, encryptedQRData}) => {
             await enviarCorreoConQR({email: userData.email, contenidoQR: encryptedQRData}).then(async (res) => {
                 console.log(res);
-                Alert.alert('¡Éxito!', 'Tu pase se ha generado correctamente, se te ha enviado un correo con el QR adjunto.');
+                toast.success('¡Éxito! Tu pase se ha generado correctamente, se te ha enviado un correo con el QR adjunto.');
             }).catch(async (error) => {
                 console.log(error);
-                Alert.alert('¡Éxito!', 'Tu pase se ha generado correctamente, pero hubo un error al enviar el QR adjunto. Puedes seguir ocupando el QR disponible aquí.');
+                toast.success('¡Éxito! Tu pase se ha generado correctamente, pero hubo un error al enviar el QR adjunto. Puedes seguir ocupando el QR disponible aquí.');
             })
         }).catch(async (error) => {
             console.log(error);
-            Alert.alert('Error generando el pase: ', error.message);
+            toast.error('Error generando el pase: ', error.message);
         }).finally(async () => {
             await loadInitialData();
             setIsCreatingPase(false);

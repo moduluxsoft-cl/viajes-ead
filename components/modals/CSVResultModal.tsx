@@ -1,9 +1,9 @@
 import React from 'react';
-import { Modal, View, Text, StyleSheet, SafeAreaView, FlatList } from 'react-native';
-import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
-import { BatchResult, CSVRow } from '../../src/services/usersService';
-import { Ionicons } from '@expo/vector-icons';
+import {FlatList, Modal, SafeAreaView, StyleSheet, Text, View} from 'react-native';
+import {Button} from '../ui/Button';
+import {Card} from '../ui/Card';
+import {BatchResult, CSVRow} from '@/src/services/usersService';
+import {Ionicons} from '@expo/vector-icons';
 
 interface CSVResultModalProps {
     visible: boolean;

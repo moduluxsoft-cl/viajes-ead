@@ -1,14 +1,8 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import {
-    onAuthStateChanged,
-    User,
-    signInWithEmailAndPassword,
-    signOut,
-    createUserWithEmailAndPassword, UserCredential
-} from 'firebase/auth';
-import {doc, getDoc, setDoc, Timestamp} from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
-import { Alert } from 'react-native';
+import React, {createContext, ReactNode, useContext, useEffect, useState} from 'react';
+import {onAuthStateChanged, signInWithEmailAndPassword, signOut, User, UserCredential} from 'firebase/auth';
+import {doc, getDoc, Timestamp} from 'firebase/firestore';
+import {auth, db} from '@/config/firebase';
+import {Alert} from 'react-native';
 
 export interface UserData {
     uid: string;

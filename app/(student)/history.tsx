@@ -1,24 +1,11 @@
 // app/(student)/history.tsx
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    SafeAreaView,
-    FlatList,
-    RefreshControl,
-    Alert,
-} from 'react-native';
-import { Card } from '../../components/ui/Card';
-import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import { useAuth } from '../../contexts/AuthContext';
+import React, {useCallback, useEffect, useState} from 'react';
+import {Alert, FlatList, RefreshControl, SafeAreaView, StyleSheet, Text, View,} from 'react-native';
+import {Card} from '@/components/ui/Card';
+import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
+import {useAuth} from '@/contexts/AuthContext';
 // Importamos todo desde el nuevo servicio central
-import {
-    obtenerPasesEstudiante,
-    Pase,
-    obtenerViajesPorIds,
-    Viaje
-} from '../../src/services/viajesService';
+import {obtenerPasesEstudiante, obtenerViajesPorIds, Pase, Viaje} from '@/src/services/viajesService';
 
 // Creamos una nueva interfaz para combinar los datos del pase y los detalles de su viaje
 interface PaseConDetalles extends Pase {

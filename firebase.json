@@ -1,7 +1,7 @@
 {
   "functions": [
     {
-      "source": "viajes-ead-view/functions",
+      "source": "functions",
       "codebase": "default",
       "ignore": [
         "node_modules",
@@ -17,7 +17,7 @@
     }
   ],
   "hosting": {
-    "public": "viajes-ead-view/dist",
+    "public": "dist",
     "ignore": [
       "firebase.json",
       "**/.*",

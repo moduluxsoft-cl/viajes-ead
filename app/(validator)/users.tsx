@@ -663,13 +663,14 @@ export default function UsersScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    container: { flex: 1, backgroundColor: '#EAEAEA' },
     header: {
         paddingVertical: 10,
         paddingHorizontal: 20,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        backgroundColor: '#ffffff',
     },
     title: {
         fontSize: 20,
@@ -678,12 +679,12 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingBottom: 1,
     },
-    controlsContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, gap: 8, marginBottom: 10 },
+    controlsContainer: { flexDirection: 'row', alignItems: 'center', padding: 10, gap: 8, marginBottom: 10, backgroundColor: '#FFFFFF' },
     searchInput: { flex: 1, backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, borderWidth: 1, borderColor: '#d1d5db' },
     addButton: { paddingHorizontal: 12, backgroundColor: '#BE031E'},
     csvButton: { paddingHorizontal: 12, backgroundColor: '#BE031E'},
     listContainer: { paddingHorizontal: 16, paddingBottom: 16 },
-    userCard: { marginBottom: 12, backgroundColor: '#f3f4f6' },
+    userCard: { marginBottom: 12, backgroundColor: '#ffffff' },
     userHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
     userName: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
     userRoleText: {
@@ -717,7 +718,7 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#e5e7eb',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '##f3f4f6',
         marginBottom: 8,
     },
     csvSectionTitle: {

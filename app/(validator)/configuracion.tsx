@@ -224,7 +224,7 @@ export default function ConfiguracionScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    container: { flex: 1, backgroundColor: '#EAEAEA' },
     innerDiv: { padding: 20 },
     header: {
         paddingVertical: 10,
@@ -232,6 +232,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        backgroundColor: '#ffffff',
     },
     title: {
         fontSize: 20,

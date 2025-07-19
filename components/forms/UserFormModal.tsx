@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { Picker } from '@react-native-picker/picker';
 import {useAuth, UserData} from '@/contexts/AuthContext';
 import { getPropertyValues } from '@/src/services/configuracionService';
+import {toast} from "react-toastify";
 
 interface Props {
     visible: boolean;
@@ -43,7 +44,7 @@ export const UserFormModal = ({ visible, onClose, onSubmit, initialData, saving 
         if (visible) {
             getPropertyValues("CARRERA")
                 .then(setCarreras)
-                .catch(() => Alert.alert("Error", "No se pudo cargar la lista de carreras."));
+                .catch(() => toast.error(`Error: No se pudo cargar la lista de carreras.`));
         }
     }, [visible]);
 
@@ -161,7 +162,7 @@ export const UserFormModal = ({ visible, onClose, onSubmit, initialData, saving 
 
     const handleSubmit = () => {
         if (!validateAllFields()) {
-            Alert.alert("Errores en el formulario", "Por favor, corrige los errores antes de continuar.");
+            toast.error("Errores en el formulario: Por favor, corrige los errores antes de continuar.");
             return;
         }
         onSubmit(user, password);

@@ -19,7 +19,8 @@ import {FirebaseError} from 'firebase/app';
 import {enviarEmailRecuperacion} from '@/src/services/usersService';
 import {useLocalSearchParams} from "expo-router";
 import {EadLogo} from "@/assets/icons/ead-logo";
-import PucvLogo from "@/assets/icons/pucv-logo"; // Importamos la función
+import PucvLogo from "@/assets/icons/pucv-logo";
+import {toast} from "react-toastify"; // Importamos la función
 
 export default function LoginScreen() {
     const { login } = useAuth();
@@ -60,11 +61,11 @@ export default function LoginScreen() {
 
     const validateForm = () => {
         if (!email.trim()) {
-            Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
+            toast.error('Error: Por favor ingresa tu correo electrónico');
             return false;
         }
         if (!password.trim()) {
-            Alert.alert('Error', 'Por favor ingresa tu contraseña');
+            toast.error('Error: Por favor ingresa tu contraseña');
             return false;
         }
         return true;
@@ -84,7 +85,7 @@ export default function LoginScreen() {
                 const errorMessage = error instanceof FirebaseError
                     ? getErrorMessage(error)
                     : 'Error inesperado';
-                Alert.alert('Error de autenticación', errorMessage);
+                toast.error('Error de autenticación' + errorMessage);
             }
         } finally {
             setLoading(false);

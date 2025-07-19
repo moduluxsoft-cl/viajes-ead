@@ -3,6 +3,7 @@ import {onAuthStateChanged, signInWithEmailAndPassword, signOut, User, UserCrede
 import {doc, getDoc, Timestamp} from 'firebase/firestore';
 import {auth, db} from '@/config/firebase';
 import {Alert} from 'react-native';
+import {toast} from "react-toastify";
 
 export interface UserData {
     uid: string;
@@ -62,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUserData({ uid: currentUser.uid, ...userDocSnap.data() } as UserData);
             } else {
                 if(userDocSnap.exists() && !userDocSnap.data().activo) {
-                    Alert.alert("Cuenta Desactivada", "Tu cuenta ha sido desactivada por un administrador.");
+                    toast.info("Cuenta Desactivada: Tu cuenta ha sido desactivada por un administrador.");
                 }
                 await signOut(auth);
             }
@@ -81,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await signOut(auth);
         } catch (error) {
             console.error("Error signing out:", error);
-            Alert.alert("Error", "No se pudo cerrar la sesión.");
+            toast.error("Error: No se pudo cerrar la sesión.");
         }
     };
 

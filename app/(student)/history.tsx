@@ -6,6 +6,7 @@ import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
 import {useAuth} from '@/contexts/AuthContext';
 // Importamos todo desde el nuevo servicio central
 import {obtenerPasesEstudiante, obtenerViajesPorIds, Pase, Viaje} from '@/src/services/viajesService';
+import {toast} from "react-toastify";
 
 // Creamos una nueva interfaz para combinar los datos del pase y los detalles de su viaje
 interface PaseConDetalles extends Pase {
@@ -49,7 +50,7 @@ export default function HistoryScreen() {
         } catch (error) {
             console.error('Error loading pases:', error);
             const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-            Alert.alert('Error', `No se pudieron cargar los pases: ${errorMessage}`);
+            toast.error(`Error: No se pudieron cargar los pases: ${errorMessage}`);
         } finally {
             setLoading(false);
         }

@@ -20,6 +20,7 @@ import {Ionicons} from '@expo/vector-icons';
 import {obtenerViajeActivo, sobrescribirViajeActivo, Viaje} from '@/src/services/viajesService';
 import {EadLogo} from "@/assets/icons/ead-logo";
 import PucvLogo from "@/assets/icons/pucv-logo";
+import {toast} from "react-toastify";
 
 // El tipo de dato para el formulario solo incluye los campos editables.
 type ViajeFormData = {
@@ -72,7 +73,7 @@ export default function ConfiguracionScreen() {
             }
         } catch (error) {
             console.error("Error al cargar viaje activo:", error);
-            Alert.alert("Error", "No se pudo cargar la configuración del viaje activo.");
+            toast.error(`Error: No se pudo cargar la configuración del viaje activo.`);
         } finally {
             setLoading(false);
         }
@@ -84,7 +85,7 @@ export default function ConfiguracionScreen() {
 
     const handleSave = () => {
         if (!formData.destino || !formData.capacidadMaxima || formData.capacidadMaxima <= 0) {
-            Alert.alert("Datos incompletos", "Por favor, completa un destino y una capacidad máxima válida.");
+            toast.info("Datos incompletos: Por favor, completa un destino y una capacidad máxima válida.");
             return;
         }
         setShowConfirmModal(true);
@@ -107,7 +108,7 @@ export default function ConfiguracionScreen() {
             setTimeout(() => setSuccessMessage(''), 4000);
         } catch (error) {
             const message = error instanceof Error ? error.message : "Ocurrió un error desconocido.";
-            Alert.alert("Error al guardar", message);
+            toast.error("Error al guardar" + message);
         } finally {
             setSaving(false);
         }

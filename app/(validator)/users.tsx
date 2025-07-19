@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, {useState, useCallback, useEffect, useRef} from 'react';
 import {
     View,
     Text,
@@ -38,6 +38,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import {EadLogo} from "@/assets/icons/ead-logo";
 import PucvLogo from "@/assets/icons/pucv-logo";
+import {Id, toast} from "react-toastify";
 
 // --- TIPO PARA MANEJAR ACCIONES ---
 type ActionToConfirm = {
@@ -189,10 +190,30 @@ export default function UsersScreen() {
     // --- ESTADOS PARA EL NUEVO MODAL DE CONFIRMACIÓN ---
     const [actionToConfirm, setActionToConfirm] = useState<ActionToConfirm>(null);
     const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+    const [isLoadingAction, setIsLoadingAction] = useState(false);
+    const [processingUser, setProcessingUser] = useState<UserData | null>(null);
 
     // Estado para el límite de carga CSV
     const [canUploadCsv, setCanUploadCsv] = useState(true);
     const [csvUploadLimitMessage, setCsvUploadLimitMessage] = useState('');
+
+    const toastId = useRef<Id | null>(null);
+
+    useEffect(() => {
+        if (isLoadingAction) {
+            if (!toastId.current) {
+                toastId.current = toast.loading(
+                    `Procesando acción para usuario ${processingUser?.nombre} ${processingUser?.apellido}, RUT: ${processingUser?.rut} ...`
+                );
+            }
+        } else {
+            if (toastId.current) {
+                toast.dismiss(toastId.current);
+                toastId.current = null;
+            }
+        }
+    }, [isLoadingAction, processingUser]);
+
 
     const checkCsvUploadLimit = useCallback(async () => {
         console.log("Checking CSV upload limit status...");
@@ -221,7 +242,7 @@ export default function UsersScreen() {
             console.log("Users loaded successfully.");
         } catch (error) {
             console.error("Failed to load users:", error);
-            Alert.alert('Error', 'No se pudieron cargar los usuarios.');
+            toast.error('Error: No se pudieron cargar los usuarios.');
         } finally {
             setLoading(false);
         }
@@ -269,49 +290,64 @@ export default function UsersScreen() {
             }
             handleCloseEditModal();
             await loadUsers();
-            Alert.alert("Éxito", `Usuario ${selectedUser ? 'actualizado' : 'creado'} correctamente.`);
+            toast.success(`Éxito: Usuario ${selectedUser ? 'actualizado' : 'creado'} correctamente.`);
             checkCsvUploadLimit(); // Re-verificar el límite después de crear un usuario
         } catch (error) {
             console.error("Error saving user:", error);
-            Alert.alert("Error", error instanceof Error ? error.message : "Ocurrió un error.");
+            toast.error(`Error: ${error instanceof Error ? error.message : "Ocurrió un error."}`);
         } finally {
             setSaving(false);
         }
     };
 
     // --- NUEVA FUNCIÓN CENTRAL PARA EJECUTAR LA ACCIÓN CONFIRMADA ---
-    const handleConfirmAction = async () => {
+    const handleConfirmAction = async  () => {
         if (!actionToConfirm) return;
 
         const { type, user } = actionToConfirm;
         setConfirmModalVisible(false); // Oculta el modal inmediatamente
         setUpdatingUserId(user.uid);
-        console.log(`Confirming action '${type}' for user ${user.email}`);
+        setIsLoadingAction(true);
+        setProcessingUser(user);
 
         try {
             if (type === 'toggle') {
-                const action = user.activo ? 'desactivar' : 'reactivar';
+                const action = user.activo ? 'desactiva' : 'reactiva';
                 const actionFn = user.activo ? desactivarUsuario : reactivarUsuario;
-                await actionFn(user.uid);
-                Alert.alert('Éxito', `Usuario ${action}do.`);
-                console.log(`User ${user.email} ${action}d.`);
+                await actionFn(user.uid).then(async () => {
+                    setIsLoadingAction(false);
+                    await loadUsers();
+                    toast.success(`Éxito: usuario ${user.nombre} ${user.apellido}, RUT: ${user.rut}, ${action}do.`);
+                }).catch(()=> {
+                    setIsLoadingAction(false);
+                    toast.error(`Error: No se logró ${action}r el usuario ${user.nombre} ${user.apellido}, RUT: ${user.rut}.`);
+                });
             } else if (type === 'delete') {
-                await eliminarUsuarioComoAdmin(user.uid);
-                Alert.alert("Éxito", "Usuario eliminado.");
-                console.log(`User ${user.email} deleted.`);
+                await eliminarUsuarioComoAdmin(user.uid).then(async ()=> {
+                    setIsLoadingAction(false);
+                    await loadUsers();
+                    toast.success(`Éxito: usuario ${user.nombre} ${user.apellido}, RUT: ${user.rut}, eliminado.`);
+                }).catch(()=>{
+                    setIsLoadingAction(false);
+                    toast.error(`Error: No se logró eliminar el usuario ${user.nombre} ${user.apellido}, RUT: ${user.rut}.`);
+                });
             } else if (type === 'resetPassword') {
-                await enviarEmailRecuperacion(user.email);
-                Alert.alert('Email Enviado', `Se ha enviado un enlace de recuperación a ${user.email}.`);
-                console.log(`Password reset email sent to ${user.email}.`);
+                await enviarEmailRecuperacion(user.email).then(async ()=> {
+                    setIsLoadingAction(false);
+                    await loadUsers();
+                    toast.success(`Éxito: se ha enviado un enlace de recuperación a ${user.email}.`);
+                }).catch(()=>{
+                    setIsLoadingAction(false);
+                    toast.error(`Error: No se logró enviar el correo a ${user.email}.`);
+                });
             }
-            await loadUsers(); // Recarga la lista después de cualquier acción exitosa
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "Ocurrió un error inesperado.";
-            console.error(`Error performing action '${type}' for user ${user.email}:`, error);
-            Alert.alert("Error", message);
+        } catch (error: Error | any) {
+            setIsLoadingAction(false);
+            toast.error(`Error inesperado: ${error.message}.`);
         } finally {
             setUpdatingUserId(null);
             setActionToConfirm(null);
+            setProcessingUser(null);
         }
     };
 
@@ -340,7 +376,7 @@ export default function UsersScreen() {
     const handleCsvUpload = async () => {
         if (!canUploadCsv) {
             console.log("CSV upload blocked: Limit reached. Message:", csvUploadLimitMessage);
-            Alert.alert("Límite de Carga Alcanzado", csvUploadLimitMessage);
+            toast.info("Límite de Carga Alcanzado" + csvUploadLimitMessage);
             return;
         }
 
@@ -385,7 +421,7 @@ export default function UsersScreen() {
             setCsvConfirmModalVisible(true);
         } catch (error) {
             console.error("Error during CSV upload process for creation:", error);
-            Alert.alert("Error de Carga", error instanceof Error ? error.message : "No se pudo procesar el archivo.");
+            toast.error(`Error de Carga ${error instanceof Error ? error.message : "No se pudo procesar el archivo."}`);
         } finally {
             setIsUploading(false);
         }
@@ -410,7 +446,7 @@ export default function UsersScreen() {
         } catch (serviceError) {
             console.error("Error in CSV processing (crearUsuariosDesdeCSV):", serviceError);
             const message = serviceError instanceof Error ? serviceError.message : "Ocurrió un error al procesar los datos.";
-            Alert.alert("Error en Procesamiento", message);
+            toast.error("Error en Procesamiento" + message);
         } finally {
             setIsUploading(false);
             setCsvContent('');
@@ -458,7 +494,7 @@ export default function UsersScreen() {
             setCsvDeleteConfirmModalVisible(true);
         } catch (error) {
             console.error("Error during CSV upload process for deletion:", error);
-            Alert.alert("Error de Carga", error instanceof Error ? error.message : "No se pudo procesar el archivo.");
+            toast.error(`Error de Carga ${error instanceof Error ? error.message : "No se pudo procesar el archivo."}`);
         } finally {
             setIsDeletingCsv(false);
         }
@@ -482,7 +518,7 @@ export default function UsersScreen() {
         } catch (serviceError) {
             console.error("Error in CSV processing (eliminarUsuariosDesdeCSV):", serviceError);
             const message = serviceError instanceof Error ? serviceError.message : "Ocurrió un error al procesar los datos para eliminación.";
-            Alert.alert("Error en Procesamiento", message);
+            toast.error("Error en Procesamiento" + message);
         } finally {
             setIsDeletingCsv(false);
             setCsvDeleteContent('');
@@ -546,7 +582,6 @@ export default function UsersScreen() {
                 <TextInput style={styles.searchInput} placeholder="Buscar por nombre, RUT o email..." value={searchQuery} onChangeText={setSearchQuery} />
                 <Button title="Añadir" onPress={() => handleOpenEditModal()} style={styles.addButton} textStyle={{ fontSize: 14 }} />
             </View>
-
             <ScrollView>
                 {/* Sección de Carga CSV */}
                 <View style={styles.csvSectionContainer}>

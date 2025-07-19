@@ -10,8 +10,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "patch-install": "npm install --legacy-peer-deps",
-    "build-web":"npx expo export --platform web"
+    "build-web": "npx expo export --platform web"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -60,7 +59,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
-    "@expo/webpack-config": "^19.0.1",
+    "@expo/metro-config": "^0.20.17",
     "@types/crypto-js": "^4.2.2",
     "@types/papaparse": "^5.3.16",
     "@types/react": "~19.0.10",

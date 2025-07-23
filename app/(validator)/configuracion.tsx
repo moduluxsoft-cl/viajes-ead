@@ -1,26 +1,14 @@
-// app/(validator)/configuracion.tsx
 import React, {useCallback, useEffect, useState} from 'react';
-import {
-    Alert,
-    Modal,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View
-} from 'react-native';
+import {Modal, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {useAuth} from '@/contexts/AuthContext';
 import {Card} from '@/components/ui/Card';
 import {Button} from '@/components/ui/Button';
 import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
-import {Ionicons} from '@expo/vector-icons';
 import {obtenerViajeActivo, sobrescribirViajeActivo, Viaje} from '@/src/services/viajesService';
 import {EadLogo} from "@/assets/icons/ead-logo";
 import PucvLogo from "@/assets/icons/pucv-logo";
 import {toast} from "react-toastify";
+import {IoInformationCircle} from "react-icons/io5";
 
 // El tipo de dato para el formulario solo incluye los campos editables.
 type ViajeFormData = {
@@ -166,7 +154,7 @@ export default function ConfiguracionScreen() {
 
                     <Card style={styles.infoCard}>
                         <View style={styles.infoHeader}>
-                            <Ionicons name="information-circle" size={24} color="#C4B000" />
+                            <IoInformationCircle size={24} color="#C4B000" />
                             <Text style={styles.infoTitle}>Información Importante</Text>
                         </View>
                         <View>

@@ -3,11 +3,6 @@ import React from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { StatusBar } from 'expo-status-bar';
 import { ToastContainer } from 'react-toastify';
-import { Ionicons } from '@expo/vector-icons';
-
-if (typeof window !== 'undefined') {
-    Ionicons.loadFont();
-}
 
 export default function RootLayout() {
     return (

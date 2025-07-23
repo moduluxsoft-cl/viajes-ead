@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { Ionicons } from '@expo/vector-icons';
+import React, {useState} from 'react';
+import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import DateTimePicker, {DateTimePickerEvent} from '@react-native-community/datetimepicker';
+import {IoCalendar} from "react-icons/io5";
 
 interface DatePickerInputProps {
     value: Date | undefined;
@@ -32,7 +32,7 @@ export function DatePickerInput({ value, onChange }: DatePickerInputProps) {
     return (
         <View>
             <TouchableOpacity onPress={() => setShow(true)} style={styles.datePickerButton}>
-                <Ionicons name="calendar" size={20} color="#374151" />
+                <IoCalendar size={20} color="#374151" />
                 <Text style={styles.datePickerButtonText}>
                     {value ? formatDateToString(value) : 'Seleccionar fecha'}
                 </Text>

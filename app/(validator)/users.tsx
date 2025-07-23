@@ -1,38 +1,38 @@
-import React, {useState, useCallback, useEffect, useRef} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    SafeAreaView,
+    ActivityIndicator,
     FlatList,
-    TextInput,
-    Alert,
-    TouchableOpacity,
-    Platform,
     Modal,
+    Platform,
     Pressable,
-    ActivityIndicator, ScrollView
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import {Card} from '@/components/ui/Card';
 import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
 import {Button} from '@/components/ui/Button';
-import {Ionicons} from '@expo/vector-icons';
+import {IoCheckmarkCircle, IoCloseCircle, IoEye, IoEyeOff, IoKey, IoPencil, IoTrash} from "react-icons/io5";
 import {useAuth, UserData} from '@/contexts/AuthContext';
 import {UserFormModal} from '@/components/forms/UserFormModal';
 import {CSVResultModal} from '@/components/modals/CSVResultModal';
 import {
-    obtenerUsuariosGestionables,
-    crearUsuario,
     actualizarUsuario,
-    desactivarUsuario,
-    reactivarUsuario,
-    enviarEmailRecuperacion,
-    eliminarUsuarioComoAdmin,
-    crearUsuariosDesdeCSV,
-    eliminarUsuariosDesdeCSV,
-    getCsvUploadLimitStatus,
     BatchResult,
-    DeleteBatchResult
+    crearUsuario,
+    crearUsuariosDesdeCSV,
+    DeleteBatchResult,
+    desactivarUsuario,
+    eliminarUsuarioComoAdmin,
+    eliminarUsuariosDesdeCSV,
+    enviarEmailRecuperacion,
+    getCsvUploadLimitStatus,
+    obtenerUsuariosGestionables,
+    reactivarUsuario
 } from '@/src/services/usersService';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -125,12 +125,12 @@ const CSVDeleteResultModal: React.FC<CSVDeleteResultModalProps> = ({ visible, on
 
                     <View style={styles.summaryContainer}>
                         <Card style={StyleSheet.flatten([styles.summaryCard, styles.successCard])}>
-                            <Ionicons name="checkmark-circle" size={32} color="#15803d" />
+                            <IoCheckmarkCircle size={32} color="#15803d" />
                             <Text style={styles.summaryValue}>{result.successCount}</Text>
                             <Text style={styles.summaryLabel}>Usuarios Eliminados</Text>
                         </Card>
                         <Card style={StyleSheet.flatten([styles.summaryCard, styles.errorCard])}>
-                            <Ionicons name="close-circle" size={32} color="#b91c1c" />
+                            <IoCloseCircle size={32} color="#b91c1c" />
                             <Text style={styles.summaryValue}>{result.errorCount}</Text>
                             <Text style={styles.summaryLabel}>Filas con Error</Text>
                         </Card>
@@ -546,20 +546,20 @@ export default function UsersScreen() {
                     ) : (
                         <>
                             <TouchableOpacity style={styles.actionButton} onPress={() => handleOpenEditModal(item)} hitSlop={hitSlop}>
-                                <Ionicons name="pencil" size={22} color="#2B2B2B" />
+                                <IoPencil size={22} color="#2B2B2B" />
                             </TouchableOpacity>
 
                             <TouchableOpacity style={styles.actionButton} onPress={() => requestActionConfirmation('toggle', item)} hitSlop={hitSlop}>
-                                <Ionicons name={item.activo ? "eye-off" : "eye"} size={22} color={item.activo ? "#f59e0b" : "#10b981"} />
+                                {item.activo ? <IoEyeOff size={22} color="#f59e0b" /> : <IoEye size={22} color="#10b981" />}
                             </TouchableOpacity>
 
                             <TouchableOpacity style={styles.actionButton} onPress={() => requestActionConfirmation('resetPassword', item)} hitSlop={hitSlop}>
-                                <Ionicons name="key" size={22} color="#0ea5e9" />
+                                <IoKey size={22} color="#0ea5e9" />
                             </TouchableOpacity>
 
                             {currentUser?.role === 'admin' && (
                                 <TouchableOpacity style={styles.actionButton} onPress={() => requestActionConfirmation('delete', item)} hitSlop={hitSlop}>
-                                    <Ionicons name="trash" size={22} color="#ef4444" />
+                                    <IoTrash size={22} color="#ef4444" />
                                 </TouchableOpacity>
                             )}
                         </>

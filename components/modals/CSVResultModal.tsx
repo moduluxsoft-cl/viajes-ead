@@ -3,7 +3,7 @@ import {FlatList, Modal, SafeAreaView, StyleSheet, Text, View} from 'react-nativ
 import {Button} from '../ui/Button';
 import {Card} from '../ui/Card';
 import {BatchResult, CSVRow} from '@/src/services/usersService';
-import {Ionicons} from '@expo/vector-icons';
+import {IoCheckmarkCircle, IoCloseCircle} from "react-icons/io5";
 
 interface CSVResultModalProps {
     visible: boolean;
@@ -36,12 +36,12 @@ export const CSVResultModal: React.FC<CSVResultModalProps> = ({ visible, onClose
 
                     <View style={styles.summaryContainer}>
                         <Card style={StyleSheet.flatten([styles.summaryCard, styles.successCard])}>
-                            <Ionicons name="checkmark-circle" size={32} color="#15803d" />
+                            <IoCheckmarkCircle size={32} color="#15803d" />
                             <Text style={styles.summaryValue}>{result.successCount}</Text>
                             <Text style={styles.summaryLabel}>Usuarios Creados</Text>
                         </Card>
                         <Card style={StyleSheet.flatten([styles.summaryCard, styles.errorCard])}>
-                            <Ionicons name="close-circle" size={32} color="#b91c1c" />
+                            <IoCloseCircle size={32} color="#b91c1c" />
                             <Text style={styles.summaryValue}>{result.errorCount}</Text>
                             <Text style={styles.summaryLabel}>Filas con Error</Text>
                         </Card>

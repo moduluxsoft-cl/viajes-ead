@@ -1,6 +1,6 @@
-import React, { useRef } from 'react';
-import { Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, {useRef} from 'react';
+import {StyleSheet, Text, TouchableOpacity} from 'react-native';
+import {IoCalendar} from "react-icons/io5";
 
 interface DatePickerInputProps {
     value: Date | undefined;
@@ -38,7 +38,7 @@ export function DatePickerInput({ value, onChange }: DatePickerInputProps) {
     return (
         // Usamos un TouchableOpacity para que el usuario pueda presionar el botón
         <TouchableOpacity onPress={handlePress} style={styles.datePickerButton}>
-            <Ionicons name="calendar" size={20} color="#374151" />
+            <IoCalendar size={20} color="#374151" />
             <Text style={styles.datePickerButtonText}>
                 {value ? formatDateToString(value) : 'Seleccionar fecha'}
             </Text>

@@ -1,7 +1,7 @@
 // app/(validator)/_layout.tsx
 import React from 'react';
 import { Tabs, Redirect, Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { IoScan, IoPeople, IoSettings } from "react-icons/io5";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { LogoutButton } from '@/components/ui/LogoutButton'; // Importamos el botón
@@ -62,7 +62,7 @@ export default function ValidatorLayout() {
                 options={{
                     title: 'Escanear',
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="scan" color={color} size={size} />
+                        <IoScan color={color} size={size} />
                     ),
                 }}
             />
@@ -72,7 +72,7 @@ export default function ValidatorLayout() {
                         name="users"
                         options={{
                             tabBarIcon: ({ color, size }) => (
-                                <Ionicons name="people" color={color} size={size} />
+                                <IoPeople color={color} size={size} />
                             ),
                         }}
                     />
@@ -81,7 +81,7 @@ export default function ValidatorLayout() {
                         options={{
                             title: 'Configurar',
                             tabBarIcon: ({ color, size }) => (
-                                <Ionicons name="settings" color={color} size={size} />
+                                <IoSettings color={color} size={size} />
                             ),
                         }}
                     />

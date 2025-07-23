@@ -1,10 +1,10 @@
 // components/ui/LogoutButton.tsx
-import React, { useState } from 'react';
-import { TouchableOpacity, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'expo-router';
-import { ConfirmationModal } from './ConfirmationModal';
+import React, {useState} from 'react';
+import {StyleSheet, TouchableOpacity, View} from 'react-native';
+import {IoLogOutOutline} from "react-icons/io5";
+import {useAuth} from '@/contexts/AuthContext';
+import {useRouter} from 'expo-router';
+import {ConfirmationModal} from './ConfirmationModal';
 
 export const LogoutButton = () => {
     const { logout } = useAuth();
@@ -28,7 +28,7 @@ export const LogoutButton = () => {
     return (
         <View>
             <TouchableOpacity onPress={handleLogoutPress} style={styles.button}>
-                <Ionicons name="log-out-outline" size={26} color="#BE031E" />
+                <IoLogOutOutline size={26} color="#BE031E" />
             </TouchableOpacity>
 
             <ConfirmationModal

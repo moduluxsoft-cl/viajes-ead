@@ -28,6 +28,21 @@
         "source": "**",
         "destination": "/index.html"
       }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(ttf|otf|woff|woff2|eot)",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Content-Type",
+            "value": "font/ttf"
+          }
+        ]
+      }
     ]
   }
 }

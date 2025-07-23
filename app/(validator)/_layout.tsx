@@ -38,55 +38,52 @@ export default function ValidatorLayout() {
         );
     }
 
-    // --- LÓGICA PARA ROL 'ADMIN' ---
-    // El rol 'admin' puede ver todas las pestañas.
-    return (
-        <Tabs
-            screenOptions={{
-                tabBarActiveTintColor: '#BE031E',
-                tabBarInactiveTintColor: '#9ca3af',
-                headerShown: true, // Mostramos la cabecera
-                headerStyle: { backgroundColor: '#FFFFFF' },
-                headerTintColor: '#2B2B2B',
-                headerTitleAlign: 'center',
-                headerShadowVisible: false,
-                headerRight: () => <LogoutButton />, // Añadimos el botón de logout
-                tabBarStyle: {
-                    height: 60,
-                    paddingBottom: 5,
-                },
-            }}
-        >
-            <Tabs.Screen
-                name="scanner"
-                options={{
-                    title: 'Escanear',
-                    tabBarIcon: ({ color, size }) => (
-                        <IoScan color={color} size={size} />
-                    ),
+    if (userData.role === 'admin') {
+        return (
+            <Tabs
+                screenOptions={{
+                    tabBarActiveTintColor: '#BE031E',
+                    tabBarInactiveTintColor: '#9ca3af',
+                    headerShown: true, // Mostramos la cabecera
+                    headerStyle: { backgroundColor: '#FFFFFF' },
+                    headerTintColor: '#2B2B2B',
+                    headerTitleAlign: 'center',
+                    headerShadowVisible: false,
+                    headerRight: () => <LogoutButton />, // Añadimos el botón de logout
+                    tabBarStyle: {
+                        height: 60,
+                        paddingBottom: 5,
+                    },
                 }}
-            />
-            {userData.role === 'admin' && (
-                <>
-                    <Tabs.Screen
-                        name="users"
-                        options={{
-                            tabBarIcon: ({ color, size }) => (
-                                <IoPeople color={color} size={size} />
-                            ),
-                        }}
-                    />
-                    <Tabs.Screen
-                        name="configuracion"
-                        options={{
-                            title: 'Configurar',
-                            tabBarIcon: ({ color, size }) => (
-                                <IoSettings color={color} size={size} />
-                            ),
-                        }}
-                    />
-                </>
-            )}
-        </Tabs>
-    );
+            >
+                <Tabs.Screen
+                    name="scanner"
+                    options={{
+                        title: 'Escanear',
+                        tabBarIcon: ({ color, size }) => (
+                            <IoScan color={color} size={size} />
+                        ),
+                    }}
+                />
+                <Tabs.Screen
+                    name="users"
+                    options={{
+                        title: 'Usuarios',
+                        tabBarIcon: ({ color, size }) => (
+                            <IoPeople color={color} size={size} />
+                        ),
+                    }}
+                />
+                <Tabs.Screen
+                    name="configuracion"
+                    options={{
+                        title: 'Configurar',
+                        tabBarIcon: ({ color, size }) => (
+                            <IoSettings color={color} size={size} />
+                        ),
+                    }}
+                />
+            </Tabs>
+        )
+    }
 }

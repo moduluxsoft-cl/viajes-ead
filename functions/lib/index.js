@@ -128,7 +128,7 @@ exports.enviarCorreoConQR = (0, https_2.onCall)(async (request) => {
     }
 });
 exports.updateTravelDateWeekly = (0, scheduler_1.onSchedule)({
-    schedule: '0 16 * * *',
+    schedule: '0 23 * * 3',
     timeZone: 'America/Santiago',
 }, async (event) => {
     console.log("Actualizando fecha de viaje.");
@@ -179,7 +179,7 @@ async function updateTravelDate(callerName) {
     });
 }
 exports.deleteInactiveTravelsAndPasesWeekly = (0, scheduler_1.onSchedule)({
-    schedule: '0 16 * * *',
+    schedule: '0 23 * * 3',
     timeZone: 'America/Santiago',
 }, async (event) => {
     console.log("Eliminando documentos de viajes y pases inactivos.");

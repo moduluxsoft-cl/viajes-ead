@@ -21,7 +21,6 @@ export const getPropertyValues = async (propertyName: string): Promise<string[]>
         const values = querySnapshot.docs.map(doc => doc.data().value as string);
         return values.sort();
     } catch (error) {
-        console.error(`Error fetching property ${propertyName}:`, error);
         throw new Error(`No se pudo obtener la lista de ${propertyName}.`);
     }
 };

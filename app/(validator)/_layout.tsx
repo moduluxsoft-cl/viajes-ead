@@ -23,7 +23,7 @@ export default function ValidatorLayout() {
                 <Stack.Screen
                     name="scanner"
                     options={{
-                        title: 'Validador de Pases',
+                        title: '',
                         headerShown: true,
                         headerStyle: { backgroundColor: '#FFFFFF' },
                         headerTintColor: '#2B2B2B',
@@ -44,12 +44,12 @@ export default function ValidatorLayout() {
                 screenOptions={{
                     tabBarActiveTintColor: '#BE031E',
                     tabBarInactiveTintColor: '#9ca3af',
-                    headerShown: true, // Mostramos la cabecera
+                    headerShown: true,
                     headerStyle: { backgroundColor: '#FFFFFF' },
                     headerTintColor: '#2B2B2B',
                     headerTitleAlign: 'center',
                     headerShadowVisible: false,
-                    headerRight: () => <LogoutButton />, // Añadimos el botón de logout
+                    headerRight: () => <LogoutButton />,
                     tabBarStyle: {
                         height: 60,
                         paddingBottom: 5,

@@ -48,7 +48,6 @@ export default function HistoryScreen() {
 
             setPases(pasesConDetalles);
         } catch (error) {
-            console.error('Error loading pases:', error);
             const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
             toast.error(`Error: No se pudieron cargar los pases: ${errorMessage}`);
         } finally {

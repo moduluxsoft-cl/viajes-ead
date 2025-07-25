@@ -21,7 +21,6 @@ export const encryptQRData = (data: Partial<QRData>): string => {
         const encrypted = CryptoJS.AES.encrypt(jsonString, SECRET_KEY).toString();
         return encrypted;
     } catch (error) {
-        console.error('Error encrypting QR data:', error);
         throw new Error('Error al generar código QR');
     }
 };
@@ -44,7 +43,6 @@ export const decryptQRData = (encryptedData: string): QRData => {
 
         return data;
     } catch (error) {
-        console.error('Error decrypting QR data:', error);
         throw new Error('Código QR inválido o expirado');
     }
 };

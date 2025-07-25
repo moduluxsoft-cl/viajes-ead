@@ -17,7 +17,6 @@ export const LogoutButton = () => {
             await logout();
             router.replace('/(auth)/login');
         } catch (error) {
-            console.error("Error during logout process:", error);
         }
     };
 

@@ -1,27 +1,55 @@
 import React from 'react';
-import {FlatList, Modal, SafeAreaView, StyleSheet, Text, View} from 'react-native';
-import {Button} from '../ui/Button';
-import {Card} from '../ui/Card';
-import {BatchResult, CSVRow} from '@/src/services/usersService';
-import {IoCheckmarkCircle, IoCloseCircle} from "react-icons/io5";
+import { FlatList, Modal, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
+// Importamos todos los tipos de resultados y datos que necesitamos
+import { BatchResult, CSVRow, DeleteBatchResult } from '@/src/services/usersService';
+import { IoCheckmarkCircle, IoCloseCircle } from "react-icons/io5";
 
+// --- Tipos para los errores para poder diferenciarlos ---
+type CreationError = { row: number; message: string; data: CSVRow };
+type DeletionError = { row: number; message: string; email: string };
+
+// --- Props actualizadas para el componente ---
 interface CSVResultModalProps {
     visible: boolean;
     onClose: () => void;
-    result: BatchResult | null;
+    // El resultado puede ser de creación o de eliminación
+    result: BatchResult | DeleteBatchResult | null;
+    // Props para personalizar el texto del modal
+    modalTitle: string;
+    successLabel: string;
 }
 
-export const CSVResultModal: React.FC<CSVResultModalProps> = ({ visible, onClose, result }) => {
+export const CSVResultModal: React.FC<CSVResultModalProps> = ({ visible, onClose, result, modalTitle, successLabel }) => {
     if (!result) return null;
 
-    const renderErrorItem = ({ item }: { item: { row: number; message: string; data: CSVRow } }) => (
-        <View style={styles.errorItem}>
-            <Text style={styles.errorRow}>Fila {item.row}: {item.message}</Text>
-            <Text style={styles.errorData}>
-                Datos: {item.data.nombre}, {item.data.apellido}, {item.data.email}
-            </Text>
-        </View>
-    );
+    // --- Función de renderizado de errores mejorada ---
+    // Esta función ahora puede manejar ambos tipos de errores.
+    const renderErrorItem = ({ item }: { item: CreationError | DeletionError }) => {
+        // Usamos una "guarda de tipo" para verificar si el error es de creación (tiene 'data')
+        if ('data' in item) {
+            // Es un error de CREACIÓN
+            return (
+                <View style={styles.errorItem}>
+                    <Text style={styles.errorRow}>Fila {item.row}: {item.message}</Text>
+                    <Text style={styles.errorData}>
+                        Datos: {item.data.nombre}, {item.data.apellido}, {item.data.email}
+                    </Text>
+                </View>
+            );
+        } else {
+            // Es un error de ELIMINACIÓN
+            return (
+                <View style={styles.errorItem}>
+                    <Text style={styles.errorRow}>Fila {item.row}: {item.message}</Text>
+                    <Text style={styles.errorData}>
+                        Email: {item.email}
+                    </Text>
+                </View>
+            );
+        }
+    };
 
     return (
         <Modal
@@ -32,13 +60,15 @@ export const CSVResultModal: React.FC<CSVResultModalProps> = ({ visible, onClose
         >
             <View style={styles.modalCenteredView}>
                 <SafeAreaView style={styles.modalView}>
-                    <Text style={styles.modalTitle}>Resultado de la Carga</Text>
+                    {/* Usamos el título personalizado que llega por props */}
+                    <Text style={styles.modalTitle}>{modalTitle}</Text>
 
                     <View style={styles.summaryContainer}>
                         <Card style={StyleSheet.flatten([styles.summaryCard, styles.successCard])}>
                             <IoCheckmarkCircle size={32} color="#15803d" />
                             <Text style={styles.summaryValue}>{result.successCount}</Text>
-                            <Text style={styles.summaryLabel}>Usuarios Creados</Text>
+                            {/* Usamos la etiqueta de éxito personalizada */}
+                            <Text style={styles.summaryLabel}>{successLabel}</Text>
                         </Card>
                         <Card style={StyleSheet.flatten([styles.summaryCard, styles.errorCard])}>
                             <IoCloseCircle size={32} color="#b91c1c" />
@@ -51,7 +81,8 @@ export const CSVResultModal: React.FC<CSVResultModalProps> = ({ visible, onClose
                         <>
                             <Text style={styles.errorListTitle}>Detalle de Errores:</Text>
                             <FlatList
-                                data={result.errors}
+                                // El tipo de los datos es ahora una unión de ambos tipos de error
+                                data={result.errors as (CreationError | DeletionError)[]}
                                 renderItem={renderErrorItem}
                                 keyExtractor={(item, index) => `error-${index}`}
                                 style={styles.errorList}
@@ -70,6 +101,7 @@ export const CSVResultModal: React.FC<CSVResultModalProps> = ({ visible, onClose
     );
 };
 
+// --- Los estilos se mantienen sin cambios ---
 const styles = StyleSheet.create({
     modalCenteredView: {
         flex: 1,

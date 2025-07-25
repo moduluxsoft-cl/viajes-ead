@@ -68,7 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 await signOut(auth);
             }
         } catch (error) {
-            console.error("Error fetching user data:", error);
             await signOut(auth);
         }
     };
@@ -81,7 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             await signOut(auth);
         } catch (error) {
-            console.error("Error signing out:", error);
             toast.error("Error: No se pudo cerrar la sesión.");
         }
     };

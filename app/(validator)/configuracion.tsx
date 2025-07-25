@@ -60,7 +60,6 @@ export default function ConfiguracionScreen() {
                 });
             }
         } catch (error) {
-            console.error("Error al cargar viaje activo:", error);
             toast.error(`Error: No se pudo cargar la configuración del viaje activo.`);
         } finally {
             setLoading(false);

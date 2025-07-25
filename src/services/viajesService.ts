@@ -73,28 +73,22 @@ export const obtenerViajeActivo = async (): Promise<Viaje | null> => {
 export const sobrescribirViajeActivo = async (
     config: { destino: string; fechaViaje: Date; capacidadMaxima: number }
 ) => {
-    console.log("[viajesService] sobrescribirViajeActivo() con ID incremental", config);
 
     if (!config.destino || !config.fechaViaje || config.capacidadMaxima == null) {
-        console.error("Datos incompletos", config);
         throw new Error("Datos de configuración incompletos.");
     }
 
     const abiertosQuery = query(collection(db, "viajes"), where("STATE", "==", "ABIERTO"));
     const abiertosSnap = await getDocs(abiertosQuery);
-    console.log(`Viajes "ABIERTO" encontrados para cancelar: ${abiertosSnap.size}`);
 
     if (!abiertosSnap.empty) {
         const batchCancel = writeBatch(db);
         abiertosSnap.forEach((snap) => {
-            console.log(`Marcando como CANCELADO: ${snap.id}`);
             batchCancel.update(snap.ref, { STATE: "CANCELADO" });
         });
         try {
             await batchCancel.commit();
-            console.log("Viajes anteriores cancelados con éxito.");
         } catch (err) {
-            console.error("Error al cancelar viajes anteriores:", err);
             throw err;
         }
     }
@@ -113,7 +107,6 @@ export const sobrescribirViajeActivo = async (
             const nuevoViajeId = `viajes-${newTripNumber}`;
             const nuevoViajeRef = doc(db, "viajes", nuevoViajeId);
 
-            console.log(`Preparando para crear nuevo viaje con ID: ${nuevoViajeId}`);
 
             const dataNuevoViaje = {
                 DESTINATION: config.destino,
@@ -129,10 +122,7 @@ export const sobrescribirViajeActivo = async (
             transaction.set(counterRef, { currentNumber: newTripNumber }, { merge: true });
         });
 
-        console.log(`Transacción completada. Nuevo viaje activo creado con éxito.`);
-
     } catch (error) {
-        console.error("La transacción para crear el viaje falló:", error);
         // Si la transacción falla, se lanza un error para que el frontend pueda manejarlo.
         throw new Error("No se pudo crear el nuevo viaje. Inténtalo de nuevo.");
     }
@@ -299,7 +289,6 @@ export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise
             return { paseId, encryptedQRData };
         });
     } catch (error) {
-        console.error('Error en la transacción al crear el pase:', error);
         if (error instanceof Error) throw error;
         throw new Error('No se pudo crear el pase.');
     }

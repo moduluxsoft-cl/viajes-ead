@@ -19,6 +19,7 @@ import {Button} from '@/components/ui/Button';
 import {IoCheckmarkCircle, IoCloseCircle, IoEye, IoEyeOff, IoKey, IoPencil, IoTrash} from "react-icons/io5";
 import {useAuth, UserData} from '@/contexts/AuthContext';
 import {UserFormModal} from '@/components/forms/UserFormModal';
+// Importamos el modal genérico que acabamos de modificar
 import {CSVResultModal} from '@/components/modals/CSVResultModal';
 import {
     actualizarUsuario,
@@ -93,72 +94,7 @@ const ConfirmationModal = ({
     </Modal>
 );
 
-// --- NUEVO MODAL PARA RESULTADOS DE ELIMINACIÓN CSV ---
-interface CSVDeleteResultModalProps {
-    visible: boolean;
-    onClose: () => void;
-    result: DeleteBatchResult | null;
-}
-
-const CSVDeleteResultModal: React.FC<CSVDeleteResultModalProps> = ({ visible, onClose, result }) => {
-    if (!result) return null;
-
-    const renderErrorItem = ({ item }: { item: { row: number; message: string; email: string } }) => (
-        <View style={styles.errorItem}>
-            <Text style={styles.errorRow}>Fila {item.row}: {item.message}</Text>
-            <Text style={styles.errorData}>
-                Email: {item.email}
-            </Text>
-        </View>
-    );
-
-    return (
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={visible}
-            onRequestClose={onClose}
-        >
-            <View style={styles.modalCenteredView}>
-                <SafeAreaView style={styles.modalView}>
-                    <Text style={styles.modalTitle}>Resultado de la Eliminación Masiva</Text>
-
-                    <View style={styles.summaryContainer}>
-                        <Card style={StyleSheet.flatten([styles.summaryCard, styles.successCard])}>
-                            <IoCheckmarkCircle size={32} color="#15803d" />
-                            <Text style={styles.summaryValue}>{result.successCount}</Text>
-                            <Text style={styles.summaryLabel}>Usuarios Eliminados</Text>
-                        </Card>
-                        <Card style={StyleSheet.flatten([styles.summaryCard, styles.errorCard])}>
-                            <IoCloseCircle size={32} color="#b91c1c" />
-                            <Text style={styles.summaryValue}>{result.errorCount}</Text>
-                            <Text style={styles.summaryLabel}>Filas con Error</Text>
-                        </Card>
-                    </View>
-
-                    {result.errorCount > 0 && (
-                        <>
-                            <Text style={styles.errorListTitle}>Detalle de Errores:</Text>
-                            <FlatList
-                                data={result.errors}
-                                renderItem={renderErrorItem}
-                                keyExtractor={(item, index) => `delete-error-${index}`}
-                                style={styles.errorList}
-                            />
-                        </>
-                    )}
-
-                    <Button
-                        title="Cerrar"
-                        onPress={onClose}
-                        style={styles.closeButton}
-                    />
-                </SafeAreaView>
-            </View>
-        </Modal>
-    );
-};
-
+// ELIMINAMOS EL COMPONENTE CSVDeleteResultModal DE AQUÍ
 
 export default function UsersScreen() {
     const { userData: currentUser } = useAuth();
@@ -216,9 +152,7 @@ export default function UsersScreen() {
 
 
     const checkCsvUploadLimit = useCallback(async () => {
-        console.log("Checking CSV upload limit status...");
         const { count, timeLeftMinutes } = await getCsvUploadLimitStatus();
-        console.log(`CSV Upload Status: Count=${count}, TimeLeft=${timeLeftMinutes} minutes.`);
         if (count >= 100) {
             setCanUploadCsv(false);
             setCsvUploadLimitMessage(
@@ -234,14 +168,11 @@ export default function UsersScreen() {
 
     const loadUsers = useCallback(async () => {
         setLoading(true);
-        console.log("Loading users...");
         try {
             const usersData = await obtenerUsuariosGestionables();
             setUsers(usersData);
             setFilteredUsers(usersData);
-            console.log("Users loaded successfully.");
         } catch (error) {
-            console.error("Failed to load users:", error);
             toast.error('Error: No se pudieron cargar los usuarios.');
         } finally {
             setLoading(false);
@@ -250,7 +181,7 @@ export default function UsersScreen() {
 
     useEffect(() => {
         loadUsers();
-        checkCsvUploadLimit(); // Verificar el límite al cargar la pantalla
+        checkCsvUploadLimit();
     }, [loadUsers, checkCsvUploadLimit]);
 
     useEffect(() => {
@@ -279,33 +210,28 @@ export default function UsersScreen() {
 
     const handleSaveUser = async (userToSave: Partial<UserData>, password?: string) => {
         setSaving(true);
-        console.log("Saving user:", userToSave.email);
         try {
             if (selectedUser) {
                 await actualizarUsuario(selectedUser.uid, userToSave);
-                console.log("User updated successfully.");
             } else {
                 await crearUsuario(userToSave as Omit<UserData, 'uid' | 'activo' | 'fechaCreacion'>, password!);
-                console.log("User created successfully.");
             }
             handleCloseEditModal();
             await loadUsers();
             toast.success(`Éxito: Usuario ${selectedUser ? 'actualizado' : 'creado'} correctamente.`);
-            checkCsvUploadLimit(); // Re-verificar el límite después de crear un usuario
+            checkCsvUploadLimit();
         } catch (error) {
-            console.error("Error saving user:", error);
             toast.error(`Error: ${error instanceof Error ? error.message : "Ocurrió un error."}`);
         } finally {
             setSaving(false);
         }
     };
 
-    // --- NUEVA FUNCIÓN CENTRAL PARA EJECUTAR LA ACCIÓN CONFIRMADA ---
     const handleConfirmAction = async  () => {
         if (!actionToConfirm) return;
 
         const { type, user } = actionToConfirm;
-        setConfirmModalVisible(false); // Oculta el modal inmediatamente
+        setConfirmModalVisible(false);
         setUpdatingUserId(user.uid);
         setIsLoadingAction(true);
         setProcessingUser(user);
@@ -375,24 +301,20 @@ export default function UsersScreen() {
     // --- Funciones para Carga de CSV (Creación) ---
     const handleCsvUpload = async () => {
         if (!canUploadCsv) {
-            console.log("CSV upload blocked: Limit reached. Message:", csvUploadLimitMessage);
             toast.info("Límite de Carga Alcanzado" + csvUploadLimitMessage);
             return;
         }
 
         setIsUploading(true);
-        console.log("Attempting to pick CSV document for creation...");
         try {
-            const pickerResult = await DocumentPicker.getDocumentAsync({ type: 'text/csv', copyToCacheDirectory: false }); // copyToCacheDirectory: false para web
+            const pickerResult = await DocumentPicker.getDocumentAsync({ type: 'text/csv', copyToCacheDirectory: false });
             if (pickerResult.canceled) {
-                console.log("Document picking cancelled for creation.");
                 setIsUploading(false);
                 return;
             }
 
             let fileText: string;
             if (Platform.OS === 'web') {
-                // Para web, DocumentPicker.getDocumentAsync devuelve un objeto File en assets[0].file
                 const file = pickerResult.assets[0].file;
                 if (!file) throw new Error("No se pudo obtener el archivo del picker en web.");
 
@@ -408,19 +330,15 @@ export default function UsersScreen() {
                     reader.onerror = (e) => reject(e);
                     reader.readAsText(file);
                 });
-                console.log("File content read using FileReader for web.");
             } else {
-                // Para iOS/Android, FileSystem.readAsStringAsync usa el URI del asset
                 const asset = pickerResult.assets[0];
                 if (!asset || !asset.uri) throw new Error("No se pudo obtener el URI del archivo.");
                 fileText = await FileSystem.readAsStringAsync(asset.uri);
-                console.log("File content read using FileSystem.readAsStringAsync for native.");
             }
 
             setCsvContent(fileText);
             setCsvConfirmModalVisible(true);
         } catch (error) {
-            console.error("Error during CSV upload process for creation:", error);
             toast.error(`Error de Carga ${error instanceof Error ? error.message : "No se pudo procesar el archivo."}`);
         } finally {
             setIsUploading(false);
@@ -430,21 +348,16 @@ export default function UsersScreen() {
     const handleConfirmCsvUpload = async () => {
         setCsvConfirmModalVisible(false);
         setIsUploading(true);
-        console.log("Confirming CSV upload for creation...");
         try {
             if (!csvContent) {
-                console.error("CSV content is empty for creation.");
                 throw new Error("El contenido del CSV está vacío.");
             }
-            console.log("Calling crearUsuariosDesdeCSV...");
             const result = await crearUsuariosDesdeCSV(csvContent);
-            console.log("crearUsuariosDesdeCSV completed. Result:", result);
             setCsvResult(result);
             setShowCsvResultModal(true);
             await loadUsers();
-            checkCsvUploadLimit(); // Re-verificar el límite después de la carga CSV
+            checkCsvUploadLimit();
         } catch (serviceError) {
-            console.error("Error in CSV processing (crearUsuariosDesdeCSV):", serviceError);
             const message = serviceError instanceof Error ? serviceError.message : "Ocurrió un error al procesar los datos.";
             toast.error("Error en Procesamiento" + message);
         } finally {
@@ -453,14 +366,11 @@ export default function UsersScreen() {
         }
     };
 
-    // --- Nuevas funciones para Eliminación de CSV ---
     const handleCsvDeleteUpload = async () => {
         setIsDeletingCsv(true);
-        console.log("Attempting to pick CSV document for deletion...");
         try {
-            const pickerResult = await DocumentPicker.getDocumentAsync({ type: 'text/csv', copyToCacheDirectory: false }); // copyToCacheDirectory: false para web
+            const pickerResult = await DocumentPicker.getDocumentAsync({ type: 'text/csv', copyToCacheDirectory: false });
             if (pickerResult.canceled) {
-                console.log("Document picking cancelled for deletion.");
                 setIsDeletingCsv(false);
                 return;
             }
@@ -482,18 +392,15 @@ export default function UsersScreen() {
                     reader.onerror = (e) => reject(e);
                     reader.readAsText(file);
                 });
-                console.log("File content read using FileReader for web (deletion).");
             } else {
                 const asset = pickerResult.assets[0];
                 if (!asset || !asset.uri) throw new Error("No se pudo obtener el URI del archivo para eliminación.");
                 fileText = await FileSystem.readAsStringAsync(asset.uri);
-                console.log("File content read using FileSystem.readAsStringAsync for native (deletion).");
             }
 
             setCsvDeleteContent(fileText);
             setCsvDeleteConfirmModalVisible(true);
         } catch (error) {
-            console.error("Error during CSV upload process for deletion:", error);
             toast.error(`Error de Carga ${error instanceof Error ? error.message : "No se pudo procesar el archivo."}`);
         } finally {
             setIsDeletingCsv(false);
@@ -503,20 +410,15 @@ export default function UsersScreen() {
     const handleConfirmCsvDelete = async () => {
         setCsvDeleteConfirmModalVisible(false);
         setIsDeletingCsv(true);
-        console.log("Confirming CSV upload for deletion...");
         try {
             if (!csvDeleteContent) {
-                console.error("CSV content is empty for deletion.");
                 throw new Error("El contenido del CSV está vacío.");
             }
-            console.log("Calling eliminarUsuariosDesdeCSV...");
             const result = await eliminarUsuariosDesdeCSV(csvDeleteContent);
-            console.log("eliminarUsuariosDesdeCSV completed. Result:", result);
             setCsvDeleteResult(result);
             setShowCsvDeleteResultModal(true);
-            await loadUsers(); // Recargar usuarios después de la eliminación
+            await loadUsers();
         } catch (serviceError) {
-            console.error("Error in CSV processing (eliminarUsuariosDesdeCSV):", serviceError);
             const message = serviceError instanceof Error ? serviceError.message : "Ocurrió un error al procesar los datos para eliminación.";
             toast.error("Error en Procesamiento" + message);
         } finally {
@@ -529,7 +431,6 @@ export default function UsersScreen() {
     const renderUser = ({ item }: { item: UserData }) => {
         const isUpdatingThisUser = updatingUserId === item.uid;
         const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
-        const displayRole = item.role.charAt(0).toUpperCase() + item.role.slice(1);
 
         return (
             <Card style={styles.userCard}>
@@ -583,7 +484,6 @@ export default function UsersScreen() {
                 <Button title="Añadir" onPress={() => handleOpenEditModal()} style={styles.addButton} textStyle={{ fontSize: 14 }} />
             </View>
             <ScrollView>
-                {/* Sección de Carga CSV */}
                 <View style={styles.csvSectionContainer}>
                     <Text style={styles.csvSectionTitle}>Carga Masiva de Usuarios</Text>
                     <Button
@@ -597,8 +497,7 @@ export default function UsersScreen() {
                     {!canUploadCsv && <Text style={styles.limitWarningText}>{csvUploadLimitMessage}</Text>}
                 </View>
 
-                {/* Sección de Eliminación CSV */}
-                {currentUser?.role === 'admin' && ( // Solo admins pueden eliminar masivamente
+                {currentUser?.role === 'admin' && (
                     <View style={styles.csvSectionContainer}>
                         <Text style={styles.csvSectionTitle}>Eliminación Masiva de Usuarios</Text>
                         <Button
@@ -635,8 +534,27 @@ export default function UsersScreen() {
                 {...getConfirmationDetails()}
             />
 
-            <CSVResultModal visible={showCsvResultModal} onClose={() => { setShowCsvResultModal(false); checkCsvUploadLimit(); }} result={csvResult} />
+            {/* --- MODALES DE RESULTADO ACTUALIZADOS --- */}
 
+            {/* Modal para resultados de CREACIÓN por CSV */}
+            <CSVResultModal
+                visible={showCsvResultModal}
+                onClose={() => { setShowCsvResultModal(false); checkCsvUploadLimit(); }}
+                result={csvResult}
+                modalTitle="Resultado de la Carga"
+                successLabel="Usuarios Creados"
+            />
+
+            {/* Modal para resultados de ELIMINACIÓN por CSV */}
+            <CSVResultModal
+                visible={showCsvDeleteResultModal}
+                onClose={() => setShowCsvDeleteResultModal(false)}
+                result={csvDeleteResult}
+                modalTitle="Resultado de la Eliminación Masiva"
+                successLabel="Usuarios Eliminados"
+            />
+
+            {/* --- MODALES DE CONFIRMACIÓN (SIN CAMBIOS) --- */}
             <ConfirmationModal
                 visible={isCsvConfirmModalVisible}
                 onClose={() => setCsvConfirmModalVisible(false)}
@@ -645,10 +563,6 @@ export default function UsersScreen() {
                 message="Estás a punto de procesar un archivo CSV para crear usuarios. ¿Deseas continuar?"
             />
 
-            {/* Modal para resultados de eliminación CSV */}
-            <CSVDeleteResultModal visible={showCsvDeleteResultModal} onClose={() => setShowCsvDeleteResultModal(false)} result={csvDeleteResult} />
-
-            {/* Modal de confirmación para eliminación CSV */}
             <ConfirmationModal
                 visible={isCsvDeleteConfirmModalVisible}
                 onClose={() => setCsvDeleteConfirmModalVisible(false)}
@@ -662,6 +576,7 @@ export default function UsersScreen() {
     );
 }
 
+// --- ESTILOS (SIN CAMBIOS) ---
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#EAEAEA' },
     header: {
@@ -712,7 +627,6 @@ const styles = StyleSheet.create({
     buttonDelete: { backgroundColor: '#ef4444' },
     buttonText: { color: 'white', fontWeight: 'bold', textAlign: 'center', fontSize: 16 },
     modalTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
-    // Estilos para los nuevos elementos CSV
     csvSectionContainer: {
         paddingHorizontal: 16,
         paddingVertical: 10,
@@ -728,7 +642,7 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     disabledButton: {
-        backgroundColor: '#9ca3af', // Color gris para botón deshabilitado
+        backgroundColor: '#9ca3af',
     },
     limitWarningText: {
         fontSize: 12,
@@ -737,7 +651,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     deleteCsvButton: {
-        backgroundColor: '#dc2626', // Color rojo para el botón de eliminar
+        backgroundColor: '#dc2626',
     },
     deleteCsvHintText: {
         fontSize: 12,
@@ -746,85 +660,4 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontStyle: 'italic',
     },
-    // Estilos del modal de resultados CSV (duplicados para el nuevo modal de eliminación)
-    // Asegúrate de que estos estilos sean consistentes o refactorizados si son idénticos
-    summaryContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        marginBottom: 20,
-    },
-    summaryCard: {
-        flex: 1,
-        alignItems: 'center',
-        padding: 16,
-        marginHorizontal: 8,
-        borderWidth: 1,
-    },
-    successCard: {
-        backgroundColor: '#f0fdf4',
-        borderColor: '#86efac',
-    },
-    errorCard: {
-        backgroundColor: '#fef2f2',
-        borderColor: '#fca5a5',
-    },
-    summaryValue: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        marginTop: 8,
-        color: '#1f2937',
-    },
-    summaryLabel: {
-        fontSize: 14,
-        color: '#4b5563',
-        marginTop: 4,
-    },
-    errorListTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 10,
-        borderTopWidth: 1,
-        borderTopColor: '#e5e7eb',
-        paddingTop: 16,
-    },
-    errorList: {
-        flex: 1,
-        width: '100%',
-    },
-    errorItem: {
-        backgroundColor: '#fff',
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 8,
-        borderLeftWidth: 4,
-        borderLeftColor: '#ef4444',
-    },
-    errorRow: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#b91c1c',
-    },
-    errorData: {
-        fontSize: 12,
-        color: '#6b7280',
-        marginTop: 4,
-    },
-    closeButton: {
-        marginTop: 20,
-        backgroundColor: '#667eea',
-    },
-    modalView: { // Asegúrate de que este estilo también esté disponible para el nuevo modal
-        height: '85%',
-        backgroundColor: '#f9fafb',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
-    },
 });
-

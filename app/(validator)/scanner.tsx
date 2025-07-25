@@ -62,10 +62,8 @@ export default function ScannerScreen() {
         if (!pase?.id) return;
 
         await validarPaseConteo(pase.id).then((validationResult) => {
-            console.log("validarPaseConteo ejecutado correctamente: ", validationResult);
             setScanResult({ ...validationResult, viaje });
         }).catch(error => {
-            console.log("error al ejecutar validarPaseConteo: ", error);
             setScanResult({ success: false, error: error.message });
         }).finally(() => {
             setValidating(false);

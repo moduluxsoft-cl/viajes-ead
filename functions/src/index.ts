@@ -51,15 +51,13 @@ const USER_EMAIL = process.env.USER_EMAIL;
 const REDIRECT_URI = "https://developers.google.com/oauthplayground";
 
 export const enviarCorreoConQR = onCall(async (request) => {
-    const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
-    oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
-
-    console.log("enviarCorreoConQR contenido: ",request.data)
-
-    if (CLIENT_ID === undefined || CLIENT_SECRET === undefined || REFRESH_TOKEN === undefined || USER_EMAIL === undefined) {
-        console.error("No se han configurado las credenciales de Gmail.")
+    if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN || !USER_EMAIL) {
+        console.error("No se han configurado las credenciales de Gmail.");
+        throw new HttpsError("internal", "El servidor no está configurado para enviar correos.");
     }
 
+    const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+    oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
     const accessToken = await oAuth2Client.getAccessToken();
 
     const transporter = nodemailer.createTransport({
@@ -80,36 +78,96 @@ export const enviarCorreoConQR = onCall(async (request) => {
         if (!email || !contenidoQR) {
             throw new HttpsError(
                 "invalid-argument",
-                "Se necesita un email y un contenidoQR"
+                "Se necesita un email y un contenidoQR para enviar el correo."
             );
         }
 
-        // Genera el QR en base64 (como imagen PNG)
         const qrDataUrl = await QRCode.toDataURL(contenidoQR);
         const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, "");
 
-        // Prepara el email con el adjunto
+        const htmlTemplate = `
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Tu Código QR de Viaje</title>
+            </head>
+            <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #FFF7F8;">
+                <table role="presentation" style="width: 100%; border-collapse: collapse; border: 0;">
+                    <tr>
+                        <td style="padding: 20px 0;">
+                            <table role="presentation" style="width: 600px; margin: 0 auto; border-collapse: collapse; background-color: #ffffff; border: 1px solid #dddddd; border-radius: 8px;">
+                                <tr>
+                                    <td style="padding: 40px 0 30px 0; background-color: #BE031E; color: #ffffff; border-radius: 8px 8px 0 0; text-align: center;">
+                                        <h1 style="margin: 0; font-size: 28px; font-weight: bold;">Viajes EAD</h1>
+                                        <p style="margin: 5px 0 0 0; font-size: 16px;">Sistema de Pases Escolares</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 40px 30px;">
+                                        <table role="presentation" style="width: 100%; border-collapse: collapse; border: 0;">
+                                            <tr>
+                                                <td style="color: #2B2B2B; font-size: 24px; font-weight: bold; text-align: center;">
+                                                    ¡Tu pase de viaje está listo!
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 20px 0 30px 0; color: #2B2B2B; font-size: 16px; line-height: 24px; text-align: center;">
+                                                    Aquí tienes tu código QR. Preséntalo al encargado para que pueda ser escaneado y validado.
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="text-align: center;">
+                                                    <img src="cid:qrimage" alt="Tu Código QR" width="250" height="250" style="display: block; border: 0; margin: 0 auto;" />
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 30px 0 0 0; color: #888888; font-size: 14px; text-align: center;">
+                                                    Si no solicitaste este código, puedes ignorar este correo electrónico de forma segura.
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 20px; text-align: center; font-size: 12px; color: #888888; background-color: #f2f2f2; border-radius: 0 0 8px 8px;">
+                                        &copy; ${new Date().getFullYear()} Viajes EAD. Todos los derechos reservados.
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </body>
+            </html>
+        `;
+
         const mailOptions = {
-            from: USER_EMAIL,
+            from: `"Viajes EAD" <${USER_EMAIL}>`,
             to: email,
-            subject: "Tu código QR solicitado",
-            text: "Adjuntamos tu código QR.",
+            subject: "Aquí está tu pase de viaje EAD",
+            html: htmlTemplate,
             attachments: [
                 {
                     filename: "qr.png",
                     content: base64Data,
-                    encoding: "base64"
+                    encoding: "base64",
+                    cid: 'qrimage'
                 }
             ]
         };
 
-        // Envía el email
         await transporter.sendMail(mailOptions);
+        console.log(`Correo con QR enviado exitosamente a ${email}`);
+        return { success: true, message: "Correo enviado exitosamente." };
 
-        return { success: true };
     } catch (error) {
-        console.error("Error al enviar el email:", error);
-        return { success: false };
+        console.error("Error al procesar y enviar el email con QR:", error);
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+        throw new HttpsError("internal", "Ocurrió un error inesperado al enviar el correo.");
     }
 });
 

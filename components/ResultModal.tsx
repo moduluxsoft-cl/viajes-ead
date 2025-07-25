@@ -31,7 +31,6 @@ export const ResultModal: React.FC<ResultModalProps> = ({
     // 3. Desestructuramos las propiedades desde el objeto scanResult
     const { success, pase, viaje, error, message } = scanResult;
 
-    console.log("ResultModal - Resultado: ", scanResult)
 
     const modalTitle = success ? 'Pase Válido' : 'Pase Inválido';
 

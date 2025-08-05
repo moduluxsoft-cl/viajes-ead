@@ -332,22 +332,25 @@ export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchRes
         const row = rows[i];
         const rowIndex = i + 2;
 
-        // Validación básica de formato de email
         if (!row.email || !/\S+@\S+\.\S+/.test(row.email)) {
             result.errorCount++;
             result.errors.push({ row: rowIndex, message: 'Formato de email inválido.', data: row });
             continue;
         }
 
-        // Validación de duplicados (en la BD y en el propio archivo)
         if (existingEmails.has(row.email)) {
             result.errorCount++;
             result.errors.push({ row: rowIndex, message: 'El email ya existe en el sistema.', data: row });
             continue;
         }
 
-        // Generar contraseña temporal segura
-        const tempPassword = Math.random().toString(36).slice(-8) + "aA1!";
+        const tempPassword = extractPasswordFromRut(row.rut);
+
+        if (!tempPassword) {
+            result.errorCount++;
+            result.errors.push({ row: rowIndex, message: 'RUT inválido o insuficiente para generar contraseña de 6 dígitos.', data: row });
+            continue;
+        }
 
         try {
             const userCredential = await createUserWithEmailAndPassword(secondaryAuth, row.email, tempPassword);
@@ -375,13 +378,12 @@ export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchRes
             if (error.code === 'auth/email-already-in-use') {
                 message = 'El email ya está en uso (conflicto durante la carga).';
             } else if (error.code === 'auth/weak-password') {
-                message = 'La contraseña generada es débil (error interno).';
+                message = 'La contraseña generada  es considerada débil por Firebase.';
             }
             result.errors.push({ row: rowIndex, message, data: row });
         }
     }
 
-    // Actualizar el contador y el timestamp después de una carga exitosa
     if (result.successCount > 0) {
         const newUploadCount = uploadCount + result.successCount;
         await AsyncStorage.setItem(LAST_UPLOAD_KEY, now.toString());
@@ -489,12 +491,30 @@ export const getCsvUploadLimitStatus = async (): Promise<{ count: number; timeLe
     // Si ha pasado más de una hora desde la última carga, resetear el contador
     if (now - lastUploadTimestamp > CSV_UPLOAD_WINDOW_MS) {
         uploadCount = 0;
-        await AsyncStorage.setItem(UPLOAD_COUNT_KEY, '0'); // Ensure it's reset in storage
-        await AsyncStorage.removeItem(LAST_UPLOAD_KEY); // Also remove the timestamp to be clean
+        await AsyncStorage.setItem(UPLOAD_COUNT_KEY, '0');
+        await AsyncStorage.removeItem(LAST_UPLOAD_KEY);
     } else {
         // Calcular el tiempo restante si estamos dentro de la ventana
         timeLeftMinutes = Math.ceil((CSV_UPLOAD_WINDOW_MS - (now - lastUploadTimestamp)) / (60 * 1000));
     }
 
     return { count: uploadCount, timeLeftMinutes };
+};
+/**
+ * Extrae los primeros 6 dígitos numéricos de un RUT para usar como contraseña.
+ * Elimina puntos y guiones del RUT antes de la extracción.
+ * @param rut - El RUT del usuario.
+ * @returns Los primeros 6 dígitos del RUT como string, o null si el RUT no es válido.
+ */
+const extractPasswordFromRut = (rut: string): string | null => {
+    if (!rut) {
+        return null;
+    }
+
+    const cleanRut = rut.replace(/[^0-9]/g, '');
+
+    if (cleanRut.length < 6) {
+        return null;
+    }
+    return cleanRut.substring(0, 6);
 };

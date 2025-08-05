@@ -4,71 +4,76 @@ import {useAuth} from '@/contexts/AuthContext';
 import {Card} from '@/components/ui/Card';
 import {Button} from '@/components/ui/Button';
 import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
-import {obtenerViajeActivo, sobrescribirViajeActivo, Viaje} from '@/src/services/viajesService';
+import {obtenerViajeActivo, sobrescribirViajeActivo, Viaje, obtenerEstadisticasPases} from '@/src/services/viajesService';
 import {EadLogo} from "@/assets/icons/ead-logo";
 import PucvLogo from "@/assets/icons/pucv-logo";
 import {toast} from "react-toastify";
 import {IoInformationCircle} from "react-icons/io5";
 
-// El tipo de dato para el formulario solo incluye los campos editables.
 type ViajeFormData = {
     destino: string;
     capacidadMaxima: number;
 };
 
+interface PaseStats {
+    totalPasesGenerados: number;
+    estudiantesUnicosConQR: number;
+    pasesUsadosUnaVez: number;
+    pasesUsadosDosVeces: number;
+}
+
 export default function ConfiguracionScreen() {
     const { userData } = useAuth();
 
-    // Estado solo para los campos del formulario.
     const [formData, setFormData] = useState<ViajeFormData>({
         destino: '',
         capacidadMaxima: 0,
     });
-    // Estado para guardar la información del viaje activo actual.
     const [activeTrip, setActiveTrip] = useState<Viaje | null>(null);
+    const [paseStats, setPaseStats] = useState<PaseStats | null>(null);
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-    // Función para formatear la fecha a dd/mm/yyyy
     const formatDateToString = (date: Date): string => {
         const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0'); // Los meses son 0-indexados
+        const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
         return `${day}/${month}/${year}`;
     };
 
-    const loadActiveTrip = useCallback(async () => {
+    const loadActiveTripAndStats = useCallback(async () => {
         setLoading(true);
         try {
             const viaje = await obtenerViajeActivo();
-            setActiveTrip(viaje); // Guardamos el viaje activo completo
+            setActiveTrip(viaje);
 
             if (viaje) {
-                // Si hay un viaje activo, poblamos el formulario con sus datos.
                 setFormData({
                     destino: viaje.destino,
                     capacidadMaxima: viaje.capacidadMaxima,
                 });
+                const stats = await obtenerEstadisticasPases(viaje.id);
+                setPaseStats(stats);
             } else {
-                // Si no hay viaje, reseteamos el formulario.
                 setFormData({
                     destino: '',
                     capacidadMaxima: 0,
                 });
+                setPaseStats(null);
             }
         } catch (error) {
-            toast.error(`Error: No se pudo cargar la configuración del viaje activo.`);
+            toast.error(`Error: No se pudo cargar la configuración del viaje activo o las estadísticas.`);
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        loadActiveTrip();
-    }, [loadActiveTrip]);
+        loadActiveTripAndStats();
+    }, [loadActiveTripAndStats]);
 
     const handleSave = () => {
         if (!formData.destino || !formData.capacidadMaxima || formData.capacidadMaxima <= 0) {
@@ -83,15 +88,14 @@ export default function ConfiguracionScreen() {
         setSaving(true);
         setSuccessMessage('');
         try {
-            // Creamos el objeto a guardar combinando los datos del form con la fecha actual.
             const dataToSave = {
                 ...formData,
-                fechaViaje: new Date(), // La fecha siempre es la de hoy.
+                fechaViaje: new Date(),
             };
 
             await sobrescribirViajeActivo(dataToSave);
             setSuccessMessage('¡La configuración del viaje se ha guardado con éxito!');
-            await loadActiveTrip(); // Recargamos para mostrar la info actualizada
+            await loadActiveTripAndStats(); // Recargamos para mostrar la info actualizada y las estadísticas
             setTimeout(() => setSuccessMessage(''), 4000);
         } catch (error) {
             const message = error instanceof Error ? error.message : "Ocurrió un error desconocido.";
@@ -122,13 +126,21 @@ export default function ConfiguracionScreen() {
             </View>
             <ScrollView>
                 <View style={styles.innerDiv}>
-                    {/* Sección informativa del viaje activo */}
                     {activeTrip && (
                         <Card style={styles.activeTripInfoCard}>
                             <Text style={styles.activeTripTitle}>Viaje Activo Actual</Text>
                             <Text style={styles.activeTripText}>Destino: {activeTrip.destino}</Text>
                             <Text style={styles.activeTripText}>Fecha: {formatDateToString(activeTrip.fechaViaje)}</Text>
                             <Text style={styles.activeTripText}>Capacidad: {activeTrip.capacidadMaxima}</Text>
+                        </Card>
+                    )}
+
+                    {paseStats && (
+                        <Card style={styles.statsCard}>
+                            <Text style={styles.statsTitle}>Estadísticas de Pases (Viaje Actual)</Text>
+                            <Text style={styles.statsText}>Estudiantes con QR generados: {paseStats.estudiantesUnicosConQR}</Text>
+                            <Text style={styles.statsText}>Pases usados 1 vez: {paseStats.pasesUsadosUnaVez}</Text>
+                            <Text style={styles.statsText}>Pases usados 2 veces: {paseStats.pasesUsadosDosVeces}</Text>
                         </Card>
                     )}
 
@@ -360,7 +372,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         fontSize: 16
     },
-    // Estilos para la nueva tarjeta de información del viaje activo
     activeTripInfoCard: {
         marginBottom: 24,
         backgroundColor: '#eef2ff',
@@ -377,5 +388,22 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#4f46e5',
         lineHeight: 20,
-    }
+    },
+    statsCard: {
+        marginBottom: 24,
+        backgroundColor: '#f0fdf4',
+        borderColor: '#22c55e',
+        borderWidth: 1,
+    },
+    statsTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#16a34a',
+        marginBottom: 8,
+    },
+    statsText: {
+        fontSize: 14,
+        color: '#15803d',
+        lineHeight: 20,
+    },
 });

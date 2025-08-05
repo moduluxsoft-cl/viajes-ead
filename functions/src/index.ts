@@ -94,19 +94,19 @@ export const enviarCorreoConQR = onCall(async (request) => {
                 <title>Tu Código QR de Viaje</title>
             </head>
             <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #FFF7F8;">
-                <table role="presentation" style="width: 100%; border-collapse: collapse; border: 0;">
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
                     <tr>
                         <td style="padding: 20px 0;">
-                            <table role="presentation" style="width: 600px; margin: 0 auto; border-collapse: collapse; background-color: #ffffff; border: 1px solid #dddddd; border-radius: 8px;">
+                            <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="border-collapse: collapse; background-color: #ffffff; border: 1px solid #dddddd; border-radius: 8px;">
                                 <tr>
-                                    <td style="padding: 40px 0 30px 0; background-color: #BE031E; color: #ffffff; border-radius: 8px 8px 0 0; text-align: center;">
+                                    <td align="center" style="padding: 40px 0 30px 0; background-color: #BE031E; color: #ffffff; border-radius: 8px 8px 0 0;">
                                         <h1 style="margin: 0; font-size: 28px; font-weight: bold;">Viajes EAD</h1>
                                         <p style="margin: 5px 0 0 0; font-size: 16px;">Sistema de Pases Escolares</p>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td style="padding: 40px 30px;">
-                                        <table role="presentation" style="width: 100%; border-collapse: collapse; border: 0;">
+                                        <table border="0" cellpadding="0" cellspacing="0" width="100%">
                                             <tr>
                                                 <td style="color: #2B2B2B; font-size: 24px; font-weight: bold; text-align: center;">
                                                     ¡Tu pase de viaje está listo!
@@ -118,8 +118,8 @@ export const enviarCorreoConQR = onCall(async (request) => {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td style="text-align: center;">
-                                                    <img src="cid:qrimage" alt="Tu Código QR" width="250" height="250" style="display: block; border: 0; margin: 0 auto;" />
+                                                <td align="center">
+                                                    <img src="cid:qrimage" alt="Tu Código QR" width="250" height="250" style="display: block; border: 0;" />
                                                 </td>
                                             </tr>
                                             <tr>
@@ -167,14 +167,16 @@ export const enviarCorreoConQR = onCall(async (request) => {
         if (error instanceof HttpsError) {
             throw error;
         }
+        // Devolver un error genérico para otros tipos de fallos.
         throw new HttpsError("internal", "Ocurrió un error inesperado al enviar el correo.");
     }
 });
 
 
+
 export const updateTravelDateWeekly = onSchedule(
     {
-        schedule: '0 23 * * 3',
+        schedule: '0 16 * * *',
         timeZone: 'America/Santiago',
     },
     async (event) => {
@@ -238,7 +240,7 @@ async function updateTravelDate(callerName: String) {
 
 export const deleteInactiveTravelsAndPasesWeekly = onSchedule(
     {
-        schedule: '0 23 * * 3',
+        schedule: '0 16 * * *',
         timeZone: 'America/Santiago',
     },
     async (event) => {

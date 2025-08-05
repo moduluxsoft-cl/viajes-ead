@@ -48,7 +48,6 @@ export const UserFormModal = ({ visible, onClose, onSubmit, initialData, saving 
         }
     }, [visible]);
 
-    // Actualizar el formulario si los datos iniciales cambian
     useEffect(() => {
         if (visible) {
             setUser(getInitialState());
@@ -128,24 +127,43 @@ export const UserFormModal = ({ visible, onClose, onSubmit, initialData, saving 
     };
 
     const validateRUT = (rut: string): boolean => {
-        const cleanRut = rut.replace(/[^\dkK]/g, '');
-        if (cleanRut.length < 2) return false;
+        if (!rut || typeof rut !== 'string') {
+            return false;
+        }
+        const cleanRut = rut.replace(/[^0-9kK]/g, '').toUpperCase();
+
+        if (cleanRut.length < 2) {
+            return false;
+        }
 
         const body = cleanRut.slice(0, -1);
-        const dv = cleanRut.slice(-1).toUpperCase();
+        const dv = cleanRut.slice(-1);
+
+        if (!/^\d+$/.test(body)) {
+            return false;
+        }
 
         let sum = 0;
         let multiplier = 2;
 
         for (let i = body.length - 1; i >= 0; i--) {
-            sum += parseInt(body[i]) * multiplier;
+            sum += parseInt(body[i], 10) * multiplier;
             multiplier = multiplier === 7 ? 2 : multiplier + 1;
         }
 
         const remainder = sum % 11;
-        const calculatedDv = remainder < 2 ? remainder.toString() : remainder === 10 ? 'K' : (11 - remainder).toString();
+        const calculatedDv = 11 - remainder;
 
-        return dv === calculatedDv;
+        let expectedDv: string;
+        if (calculatedDv === 11) {
+            expectedDv = '0';
+        } else if (calculatedDv === 10) {
+            expectedDv = 'K';
+        } else {
+            expectedDv = calculatedDv.toString();
+        }
+
+        return dv === expectedDv;
     };
 
     const validateAllFields = (): boolean => {

@@ -293,3 +293,38 @@ export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise
         throw new Error('No se pudo crear el pase.');
     }
 };
+
+/**
+ * Obtiene estadísticas de los pases generados para un viaje específico.
+ * @param viajeId El ID del viaje del que se quieren obtener las estadísticas.
+ * @returns Un objeto con el total de pases generados, pases usados 1 vez y pases usados 2 veces.
+ */
+export const obtenerEstadisticasPases = async (viajeId: string) => {
+    const pasesRef = collection(db, 'pases');
+    const q = query(pasesRef, where('viajeId', '==', viajeId));
+    const snapshot = await getDocs(q);
+
+    let totalPasesGenerados = 0;
+    let pasesUsadosUnaVez = 0;
+    let pasesUsadosDosVeces = 0;
+    const estudiantesConQR = new Set<string>();
+
+    snapshot.docs.forEach(doc => {
+        const pase = doc.data() as Pase;
+        totalPasesGenerados++;
+        estudiantesConQR.add(pase.estudianteId);
+
+        if (pase.scanCount === 1) {
+            pasesUsadosUnaVez++;
+        } else if (pase.scanCount === 2) {
+            pasesUsadosDosVeces++;
+        }
+    });
+
+    return {
+        totalPasesGenerados,
+        estudiantesUnicosConQR: estudiantesConQR.size, // Cantidad de estudiantes únicos
+        pasesUsadosUnaVez,
+        pasesUsadosDosVeces,
+    };
+};

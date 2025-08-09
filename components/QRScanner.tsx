@@ -1,6 +1,5 @@
 import React, {useEffect} from 'react';
 import {Button, Platform, StyleSheet, Text, View} from 'react-native';
-// Se cambia la importación de Linking para usar el paquete de Expo, que es más robusto.
 import * as Linking from 'expo-linking';
 import {CameraView, useCameraPermissions} from 'expo-camera';
 

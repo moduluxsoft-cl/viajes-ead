@@ -449,7 +449,6 @@ export const eliminarUsuariosDesdeCSV = async (csvString: string): Promise<Delet
         parseResult.errors.forEach(err => console.error("Papaparse Error:", err));
         throw new Error("El archivo CSV tiene un formato incorrecto o faltan encabezados.");
     }
-
     const rows = parseResult.data;
     const functions = getFunctions();
     const deleteUserFunction = httpsCallable(functions, 'deleteUser'); // Asumiendo que tienes una Cloud Function para esto

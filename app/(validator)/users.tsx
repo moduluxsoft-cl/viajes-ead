@@ -93,7 +93,6 @@ const ConfirmationModal = ({
         </View>
     </Modal>
 );
-
 export default function UsersScreen() {
     const { userData: currentUser } = useAuth();
 

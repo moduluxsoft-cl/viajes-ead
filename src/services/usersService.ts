@@ -60,14 +60,27 @@ const formatRUT = (rut: string): string => {
  * @param carrera - El nombre de la carrera desde el CSV.
  * @returns La carrera normalizada.
  */
-const normalizeCarrera = (carrera: string): string => {
+export const normalizeCarrera = (carrera: string): string => {
     if (!carrera) return 'No especificada';
+    const raw = carrera.trim();
+    const upper = raw.toUpperCase();
 
-    if (carrera.toUpperCase() === "PROGRAMA DE MOVILIDAD ESTUDIANTIL (PME)") {
-        return "Programa de Movilidad Estudiantil (PME)";
+    if (
+        upper === 'PME' ||
+        upper === 'PROGRAMA DE MOVILIDAD ESTUDIANTIL' ||
+        upper === 'PROGRAMA DE MOVILIDAD ESTUDIANTIL (PME)'
+    ) {
+        return 'Programa de Movilidad Estudiantil (PME)';
     }
 
-    return carrera.charAt(0).toUpperCase() + carrera.slice(1).toLowerCase();
+    if (upper === 'ARQUITECTURA') return 'Arquitectura';
+    if (upper === 'DISEÑO') return 'Diseño';
+    if (upper === 'DISEÑO INDUSTRIAL') return 'Diseño Industrial';
+
+    if (upper === 'DISENO') return 'Diseño';
+    if (upper === 'DISENO INDUSTRIAL') return 'Diseño Industrial';
+
+    return raw;
 };
 
 

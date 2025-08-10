@@ -94,10 +94,18 @@ const ConfirmationModal = ({
     </Modal>
 );
 
-// ELIMINAMOS EL COMPONENTE CSVDeleteResultModal DE AQUÍ
-
 export default function UsersScreen() {
     const { userData: currentUser } = useAuth();
+
+    if (currentUser?.role !== 'admin') {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.errorText}>No tienes permiso para acceder a esta sección.</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
     const [users, setUsers] = useState<UserData[]>([]);
     const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
     const [loading, setLoading] = useState(true);
@@ -608,6 +616,12 @@ const styles = StyleSheet.create({
         color: '#4f46e5',
         marginBottom: 6,
         fontStyle: 'italic',
+    },
+    errorText: {
+        textAlign: 'center',
+        marginTop: 50,
+        fontSize: 18,
+        color: '#ef4444'
     },
     userDetail: { fontSize: 14, color: '#6b7280', marginBottom: 4 },
     statusIndicator: { width: 12, height: 12, borderRadius: 6 },

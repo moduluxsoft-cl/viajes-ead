@@ -51,6 +51,12 @@ const USER_EMAIL = process.env.USER_EMAIL;
 const REDIRECT_URI = "https://developers.google.com/oauthplayground";
 
 export const enviarCorreoConQR = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "Se requiere autenticación para realizar esta acción."
+        );
+    }
     if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN || !USER_EMAIL) {
         console.error("No se han configurado las credenciales de Gmail.");
         throw new HttpsError("internal", "El servidor no está configurado para enviar correos.");
@@ -167,7 +173,6 @@ export const enviarCorreoConQR = onCall(async (request) => {
         if (error instanceof HttpsError) {
             throw error;
         }
-        // Devolver un error genérico para otros tipos de fallos.
         throw new HttpsError("internal", "Ocurrió un error inesperado al enviar el correo.");
     }
 });
@@ -253,17 +258,6 @@ export const deleteInactiveTravelsAndPasesWeekly = onSchedule(
     }
 );
 
-export const testDeleteInactiveTravelsAndPases = onRequest(async (req, res) => {
-    await deleteInactiveTravelsAndPases().then(() => {
-        res.status(200).json({
-            message: "Documentos eliminados exitosamente.",
-            timestamp: new Date().toISOString()
-        });
-    }).catch((error) => {
-        console.error('Error en prueba:', error);
-        res.status(500).json({ error: "Error en prueba" });
-    });
-});
 
 async function deleteInactiveTravelsAndPases() {
     const db = getFirestore();
@@ -283,7 +277,6 @@ async function deleteInactiveTravelsAndPases() {
         let docsToDelete: QueryDocumentSnapshot<DocumentData>[] = [];
         let activeTravelDoc: QueryDocumentSnapshot<DocumentData>;
 
-        // Iterar sobre todos los documentos
         travelsQuerySnapshot.forEach((doc) => {
             const viajeData = doc.data();
 

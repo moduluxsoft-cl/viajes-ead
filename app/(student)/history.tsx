@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     statusBadge: {
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: 12, // Bordes más redondeados
+        borderRadius: 12,
     },
     statusText: {
         color: '#fff',

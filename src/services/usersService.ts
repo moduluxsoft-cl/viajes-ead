@@ -34,6 +34,43 @@ const CSV_UPLOAD_WINDOW_MS = 60 * 60 * 1000;
 const LAST_UPLOAD_KEY = 'lastCsvUploadTimestamp';
 const UPLOAD_COUNT_KEY = 'csvUploadCount';
 
+
+
+/**
+ * [NUEVO] Formatea un RUT para que tenga el formato XX.XXX.XXX-X.
+ * Se asegura de que todos los RUTs se guarden de la misma manera.
+ * @param rut - El RUT sin formato.
+ * @returns El RUT con formato.
+ */
+const formatRUT = (rut: string): string => {
+    if (!rut) return '';
+    const cleanRut = rut.replace(/[^\dkK]/g, '').toUpperCase();
+    if (cleanRut.length < 2) {
+        return cleanRut;
+    }
+    const body = cleanRut.slice(0, -1);
+    const dv = cleanRut.slice(-1);
+    const formattedBody = body.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return `${formattedBody}-${dv}`;
+};
+
+/**
+ * [NUEVO] Normaliza el nombre de la carrera a un formato estándar (Title Case).
+ * Resuelve el problema de la asignación de carreras por mayúsculas/minúsculas.
+ * @param carrera - El nombre de la carrera desde el CSV.
+ * @returns La carrera normalizada.
+ */
+const normalizeCarrera = (carrera: string): string => {
+    if (!carrera) return 'No especificada';
+
+    if (carrera.toUpperCase() === "PROGRAMA DE MOVILIDAD ESTUDIANTIL (PME)") {
+        return "Programa de Movilidad Estudiantil (PME)";
+    }
+
+    return carrera.charAt(0).toUpperCase() + carrera.slice(1).toLowerCase();
+};
+
+
 /**
  * Obtiene todos los usuarios con el rol de 'student'.
  */
@@ -141,7 +178,6 @@ export const actualizarEmailUsuario = async (
  */
 export const eliminarUsuarioCompleto = async (uid: string): Promise<void> => {
     try {
-        // Primero eliminar de Firestore
         const userDocRef = doc(db, 'users', uid);
         await deleteDoc(userDocRef);
 
@@ -278,7 +314,6 @@ export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchRes
         errors: [],
     };
 
-    // 1. Parsear el CSV
     const parseResult = Papa.parse<CSVRow>(csvString, {
         header: true,
         skipEmptyLines: true,
@@ -290,12 +325,10 @@ export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchRes
 
     const rows = parseResult.data;
 
-    // Validar si la cantidad de usuarios excede el límite
     if (rows.length > CSV_UPLOAD_LIMIT) {
         throw new Error(`Solo puedes cargar un máximo de ${CSV_UPLOAD_LIMIT} usuarios a la vez.`);
     }
 
-    // Obtener información de la última carga
     const lastUploadTimestampStr = await AsyncStorage.getItem(LAST_UPLOAD_KEY);
     const uploadCountStr = await AsyncStorage.getItem(UPLOAD_COUNT_KEY);
 
@@ -304,14 +337,12 @@ export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchRes
     let uploadCount = uploadCountStr ? parseInt(uploadCountStr, 10) : 0;
     const now = Date.now();
 
-    // Resetear el contador si ha pasado el tiempo de la ventana
     if (now - lastUploadTimestamp > CSV_UPLOAD_WINDOW_MS) {
         uploadCount = 0;
         await AsyncStorage.setItem(UPLOAD_COUNT_KEY, '0');
         await AsyncStorage.removeItem(LAST_UPLOAD_KEY);
     }
 
-    // Verificar si la carga actual excederá el límite
     if (uploadCount + rows.length > CSV_UPLOAD_LIMIT) {
         const timeLeft = Math.ceil((CSV_UPLOAD_WINDOW_MS - (now - lastUploadTimestamp)) / (60 * 1000));
         throw new Error(
@@ -327,7 +358,6 @@ export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchRes
     const existingUsersSnapshot = await getDocs(usersCollectionRef);
     const existingEmails = new Set(existingUsersSnapshot.docs.map(doc => doc.data().email));
 
-    // 3. Procesar cada fila
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowIndex = i + 2;
@@ -348,7 +378,7 @@ export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchRes
 
         if (!tempPassword) {
             result.errorCount++;
-            result.errors.push({ row: rowIndex, message: 'RUT inválido o insuficiente para generar contraseña de 6 dígitos.', data: row });
+            result.errors.push({ row: rowIndex, message: 'RUT inválido o no tiene suficientes dígitos para generar contraseña.', data: row });
             continue;
         }
 
@@ -359,9 +389,9 @@ export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchRes
             const userDocumentData: Omit<UserData, 'uid'> = {
                 nombre: row.nombre || '',
                 apellido: row.apellido || '',
-                rut: row.rut || '',
+                rut: formatRUT(row.rut || ''),
                 email: row.email,
-                carrera: row.carrera || 'No especificada',
+                carrera: normalizeCarrera(row.carrera),
                 role: 'student',
                 activo: true,
                 fechaCreacion: Timestamp.now(),
@@ -378,7 +408,7 @@ export const crearUsuariosDesdeCSV = async (csvString: string): Promise<BatchRes
             if (error.code === 'auth/email-already-in-use') {
                 message = 'El email ya está en uso (conflicto durante la carga).';
             } else if (error.code === 'auth/weak-password') {
-                message = 'La contraseña generada  es considerada débil por Firebase.';
+                message = 'La contraseña generada desde el RUT es muy débil. El RUT debe tener al menos 6 dígitos.';
             }
             result.errors.push({ row: rowIndex, message, data: row });
         }
@@ -408,7 +438,6 @@ export const eliminarUsuariosDesdeCSV = async (csvString: string): Promise<Delet
         errors: [],
     };
 
-    // 1. Parsear el CSV
     const parseResult = Papa.parse<{ email: string }>(csvString, {
         header: true,
         skipEmptyLines: true,
@@ -425,12 +454,10 @@ export const eliminarUsuariosDesdeCSV = async (csvString: string): Promise<Delet
     const functions = getFunctions();
     const deleteUserFunction = httpsCallable(functions, 'deleteUser'); // Asumiendo que tienes una Cloud Function para esto
 
-    // 2. Procesar cada fila
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
-        const rowIndex = i + 2; // +1 por el índice base 0, +1 por la cabecera
+        const rowIndex = i + 2;
 
-        // Validación básica de formato de email
         if (!row.email || !/\S+@\S+\.\S+/.test(row.email)) {
             result.errorCount++;
             result.errors.push({ row: rowIndex, message: 'Formato de email inválido.', email: row.email || '' });
@@ -439,7 +466,6 @@ export const eliminarUsuariosDesdeCSV = async (csvString: string): Promise<Delet
 
         try {
 
-            // Buscar el usuario en Firestore para obtener el UID
             const q = query(usersCollectionRef, where('email', '==', row.email));
             const querySnapshot = await getDocs(q);
 
@@ -452,7 +478,6 @@ export const eliminarUsuariosDesdeCSV = async (csvString: string): Promise<Delet
             const userDoc = querySnapshot.docs[0];
             const uidToDelete = userDoc.id;
 
-            // Llamar a la Cloud Function para eliminar el usuario de Auth y Firestore
             await deleteUserFunction({ uid: uidToDelete });
 
             result.successCount++;
@@ -487,14 +512,11 @@ export const getCsvUploadLimitStatus = async (): Promise<{ count: number; timeLe
 
     let timeLeftMinutes = 0;
 
-
-    // Si ha pasado más de una hora desde la última carga, resetear el contador
     if (now - lastUploadTimestamp > CSV_UPLOAD_WINDOW_MS) {
         uploadCount = 0;
         await AsyncStorage.setItem(UPLOAD_COUNT_KEY, '0');
         await AsyncStorage.removeItem(LAST_UPLOAD_KEY);
     } else {
-        // Calcular el tiempo restante si estamos dentro de la ventana
         timeLeftMinutes = Math.ceil((CSV_UPLOAD_WINDOW_MS - (now - lastUploadTimestamp)) / (60 * 1000));
     }
 
@@ -516,5 +538,6 @@ const extractPasswordFromRut = (rut: string): string | null => {
     if (cleanRut.length < 6) {
         return null;
     }
+
     return cleanRut.substring(0, 6);
 };

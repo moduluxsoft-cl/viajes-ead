@@ -1,44 +1,20 @@
-// functions/src/index.ts
-/**
- * Import function triggers from their respective submodules:
- *
- * import {onCall} from "firebase-functions/v2/https";
- * import {onDocumentWritten} from "firebase-functions/v2/firestore";
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
 import {setGlobalOptions} from "firebase-functions";
-
-// Start writing functions
-// https://firebase.google.com/docs/functions/typescript
-
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
-
 import {onSchedule} from "firebase-functions/scheduler";
 import {initializeApp} from "firebase-admin/app";
 import {getFirestore} from "firebase-admin/firestore";
 import {firestore} from "firebase-admin";
-import Timestamp = firestore.Timestamp;
-import {onRequest} from "firebase-functions/https";
-import {onCall, HttpsError} from "firebase-functions/v2/https";
+import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {getAuth} from "firebase-admin/auth";
-import firebase = require("firebase-admin");
-import QueryDocumentSnapshot = firebase.firestore.QueryDocumentSnapshot;
-import DocumentData = firebase.firestore.DocumentData;
 import * as nodemailer from 'nodemailer';
 import QRCode from "qrcode";
 import {google} from "googleapis";
+
+setGlobalOptions({ maxInstances: 10 });
+
+import firebase = require("firebase-admin");
+import Timestamp = firestore.Timestamp;
+import QueryDocumentSnapshot = firebase.firestore.QueryDocumentSnapshot;
+import DocumentData = firebase.firestore.DocumentData;
 
 initializeApp();
 const db = getFirestore();
@@ -177,11 +153,9 @@ export const enviarCorreoConQR = onCall(async (request) => {
     }
 });
 
-
-
 export const updateTravelDateWeekly = onSchedule(
     {
-        schedule: '0 16 * * *',
+        schedule: '0 17 40 * 3',
         timeZone: 'America/Santiago',
     },
     async (event) => {
@@ -194,17 +168,20 @@ export const updateTravelDateWeekly = onSchedule(
     }
 );
 
-export const testUpdateTravelDate = onRequest(async (req, res) => {
-    await updateTravelDate('testUpdateTravelDate').then(() => {
-        res.status(200).json({
-            message: "Fecha de viaje actualizada exitosamente",
-            timestamp: new Date().toISOString()
+export const deleteInactiveTravelsAndPasesWeekly = onSchedule(
+    {
+        schedule: '0 17 50 * 3',
+        timeZone: 'America/Santiago',
+    },
+    async (event) => {
+        console.log("Eliminando documentos de viajes y pases inactivos.")
+        await deleteInactiveTravelsAndPases().then(() => {
+            console.log("Documentos eliminados exitosamente.");
+        }).catch((error: Error) => {
+            console.error('Error eliminando documentos:', error);
         });
-    }).catch((error) => {
-        console.error('Error en prueba:', error);
-        res.status(500).json({ error: "Error en prueba" });
-    });
-});
+    }
+);
 
 async function updateTravelDate(callerName: String) {
     const db = getFirestore();
@@ -226,38 +203,44 @@ async function updateTravelDate(callerName: String) {
 
     const actualTravelTimestamp = travelDateDoc.data().DATE_TRAVEL as Timestamp;
     const actualTravelDate = actualTravelTimestamp.toDate();
-
-    //Agregar una semana
+    const actualDestination = travelDateDoc.data().DESTINATION as string;
+    const actualCapacity = travelDateDoc.data().MAX_CAPACITY as number;
     const updatedTravelDate = new Date(actualTravelDate.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     // Quitar los segundos (establecer segundos y milisegundos a 0)
     updatedTravelDate.setHours(12, 0, 0, 0);
 
-    await travelDateDoc.ref.update({
-        DATE_TRAVEL: updatedTravelDate,
-    }).then(() => {
-        return;
-    }).catch((error: Error) => {
-        console.error(error.message);
-        throw error;
-    })
-}
+    const batchCancel = db.batch();
 
-export const deleteInactiveTravelsAndPasesWeekly = onSchedule(
-    {
-        schedule: '0 16 * * *',
-        timeZone: 'America/Santiago',
-    },
-    async (event) => {
-        console.log("Eliminando documentos de viajes y pases inactivos.")
-        await deleteInactiveTravelsAndPases().then(() => {
-            console.log("Documentos eliminados exitosamente.");
-        }).catch((error: Error) => {
-            console.error('Error eliminando documentos:', error);
-        });
+    querySnapshot.forEach((snap) => {
+        batchCancel.update(snap.ref, { STATE: "CERRADO" });
+    });
+
+    try {
+        await batchCancel.commit();
+
+        const counterRef = db.collection('counters').doc('viajes_counter');
+        const counterSnapshot = await counterRef.get();
+        const currentNumber = counterSnapshot.exists ? counterSnapshot.data()?.currentNumber : 0;
+        const newTripNumber = currentNumber + 1;
+        const nuevoViajeId = `viajes-${newTripNumber}`;
+        const nuevoViajeRef = db.collection("viajes").doc(nuevoViajeId);
+
+        const dataNuevoViaje = {
+            DESTINATION: actualDestination,
+            MAX_CAPACITY: actualCapacity,
+            DATE_TRAVEL: updatedTravelDate,
+            GENERATED_PASSES: 0,
+            STATE: "ABIERTO",
+            TRIP_NUMBER: newTripNumber,
+        };
+
+        await nuevoViajeRef.set(dataNuevoViaje);
+        await counterRef.set({ currentNumber: newTripNumber }, { merge: true });
+    } catch (error) {
+        throw new Error("No se pudo crear el nuevo viaje. Inténtalo de nuevo.");
     }
-);
-
+}
 
 async function deleteInactiveTravelsAndPases() {
     const db = getFirestore();
@@ -277,6 +260,7 @@ async function deleteInactiveTravelsAndPases() {
         let docsToDelete: QueryDocumentSnapshot<DocumentData>[] = [];
         let activeTravelDoc: QueryDocumentSnapshot<DocumentData>;
 
+        // Iterar sobre todos los documentos
         travelsQuerySnapshot.forEach((doc) => {
             const viajeData = doc.data();
 

@@ -45,7 +45,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUser = exports.testDeleteInactiveTravelsAndPases = exports.deleteInactiveTravelsAndPasesWeekly = exports.testUpdateTravelDate = exports.updateTravelDateWeekly = exports.enviarCorreoConQR = void 0;
+exports.deleteUser = exports.deleteInactiveTravelsAndPasesWeekly = exports.updateTravelDateWeekly = exports.enviarCorreoConQR = void 0;
 const firebase_functions_1 = require("firebase-functions");
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -63,8 +63,7 @@ const firebase_functions_1 = require("firebase-functions");
 const scheduler_1 = require("firebase-functions/scheduler");
 const app_1 = require("firebase-admin/app");
 const firestore_1 = require("firebase-admin/firestore");
-const https_1 = require("firebase-functions/https");
-const https_2 = require("firebase-functions/v2/https");
+const https_1 = require("firebase-functions/v2/https");
 const auth_1 = require("firebase-admin/auth");
 const nodemailer = __importStar(require("nodemailer"));
 const qrcode_1 = __importDefault(require("qrcode"));
@@ -77,10 +76,10 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
 const USER_EMAIL = process.env.USER_EMAIL;
 const REDIRECT_URI = "https://developers.google.com/oauthplayground";
-exports.enviarCorreoConQR = (0, https_2.onCall)(async (request) => {
+exports.enviarCorreoConQR = (0, https_1.onCall)(async (request) => {
     if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN || !USER_EMAIL) {
         console.error("No se han configurado las credenciales de Gmail.");
-        throw new https_2.HttpsError("internal", "El servidor no está configurado para enviar correos.");
+        throw new https_1.HttpsError("internal", "El servidor no está configurado para enviar correos.");
     }
     const oAuth2Client = new googleapis_1.google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
     oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
@@ -99,7 +98,7 @@ exports.enviarCorreoConQR = (0, https_2.onCall)(async (request) => {
     try {
         const { email, contenidoQR } = request.data;
         if (!email || !contenidoQR) {
-            throw new https_2.HttpsError("invalid-argument", "Se necesita un email y un contenidoQR para enviar el correo.");
+            throw new https_1.HttpsError("invalid-argument", "Se necesita un email y un contenidoQR para enviar el correo.");
         }
         const qrDataUrl = await qrcode_1.default.toDataURL(contenidoQR);
         const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, "");
@@ -180,15 +179,15 @@ exports.enviarCorreoConQR = (0, https_2.onCall)(async (request) => {
     }
     catch (error) {
         console.error("Error al procesar y enviar el email con QR:", error);
-        if (error instanceof https_2.HttpsError) {
+        if (error instanceof https_1.HttpsError) {
             throw error;
         }
         // Devolver un error genérico para otros tipos de fallos.
-        throw new https_2.HttpsError("internal", "Ocurrió un error inesperado al enviar el correo.");
+        throw new https_1.HttpsError("internal", "Ocurrió un error inesperado al enviar el correo.");
     }
 });
 exports.updateTravelDateWeekly = (0, scheduler_1.onSchedule)({
-    schedule: '0 16 * * *',
+    schedule: '0 17 40 * 3',
     timeZone: 'America/Santiago',
 }, async (event) => {
     console.log("Actualizando fecha de viaje.");
@@ -198,15 +197,15 @@ exports.updateTravelDateWeekly = (0, scheduler_1.onSchedule)({
         console.error('Error actualizando documentos:', error);
     });
 });
-exports.testUpdateTravelDate = (0, https_1.onRequest)(async (req, res) => {
-    await updateTravelDate('testUpdateTravelDate').then(() => {
-        res.status(200).json({
-            message: "Fecha de viaje actualizada exitosamente",
-            timestamp: new Date().toISOString()
-        });
+exports.deleteInactiveTravelsAndPasesWeekly = (0, scheduler_1.onSchedule)({
+    schedule: '0 17 50 * 3',
+    timeZone: 'America/Santiago',
+}, async (event) => {
+    console.log("Eliminando documentos de viajes y pases inactivos.");
+    await deleteInactiveTravelsAndPases().then(() => {
+        console.log("Documentos eliminados exitosamente.");
     }).catch((error) => {
-        console.error('Error en prueba:', error);
-        res.status(500).json({ error: "Error en prueba" });
+        console.error('Error eliminando documentos:', error);
     });
 });
 async function updateTravelDate(callerName) {
@@ -238,28 +237,6 @@ async function updateTravelDate(callerName) {
         throw error;
     });
 }
-exports.deleteInactiveTravelsAndPasesWeekly = (0, scheduler_1.onSchedule)({
-    schedule: '0 16 * * *',
-    timeZone: 'America/Santiago',
-}, async (event) => {
-    console.log("Eliminando documentos de viajes y pases inactivos.");
-    await deleteInactiveTravelsAndPases().then(() => {
-        console.log("Documentos eliminados exitosamente.");
-    }).catch((error) => {
-        console.error('Error eliminando documentos:', error);
-    });
-});
-exports.testDeleteInactiveTravelsAndPases = (0, https_1.onRequest)(async (req, res) => {
-    await deleteInactiveTravelsAndPases().then(() => {
-        res.status(200).json({
-            message: "Documentos eliminados exitosamente.",
-            timestamp: new Date().toISOString()
-        });
-    }).catch((error) => {
-        console.error('Error en prueba:', error);
-        res.status(500).json({ error: "Error en prueba" });
-    });
-});
 async function deleteInactiveTravelsAndPases() {
     const db = (0, firestore_1.getFirestore)();
     const travelsCollection = db.collection('viajes');
@@ -336,15 +313,15 @@ async function deleteInactiveTravelsAndPases() {
  * Solo puede ser llamada por un usuario autenticado con el rol de 'admin'.
  * Se invoca desde la app con httpsCallable.
  */
-exports.deleteUser = (0, https_2.onCall)({ region: "us-central1" }, async (request) => {
+exports.deleteUser = (0, https_1.onCall)({ region: "us-central1" }, async (request) => {
     var _a, _b;
     if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.role) !== "admin") {
-        throw new https_2.HttpsError("permission-denied", "Solo los administradores pueden eliminar usuarios.");
+        throw new https_1.HttpsError("permission-denied", "Solo los administradores pueden eliminar usuarios.");
     }
     // Los datos enviados desde la app están en request.data
     const uid = request.data.uid;
     if (!uid) {
-        throw new https_2.HttpsError("invalid-argument", "El UID del usuario es requerido.");
+        throw new https_1.HttpsError("invalid-argument", "El UID del usuario es requerido.");
     }
     try {
         // 2. Eliminar el usuario de Firebase Authentication
@@ -356,13 +333,13 @@ exports.deleteUser = (0, https_2.onCall)({ region: "us-central1" }, async (reque
     }
     catch (error) {
         console.error("Error al eliminar usuario:", error);
-        if (error instanceof https_2.HttpsError) {
+        if (error instanceof https_1.HttpsError) {
             throw error; // Re-lanzar errores HttpsError
         }
         if (error instanceof Error) {
-            throw new https_2.HttpsError("internal", error.message);
+            throw new https_1.HttpsError("internal", error.message);
         }
-        throw new https_2.HttpsError("internal", "Ocurrió un error inesperado al eliminar el usuario.");
+        throw new https_1.HttpsError("internal", "Ocurrió un error inesperado al eliminar el usuario.");
     }
 });
 //# sourceMappingURL=index.js.map

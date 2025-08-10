@@ -155,7 +155,7 @@ export const enviarCorreoConQR = onCall(async (request) => {
 
 export const updateTravelDateWeekly = onSchedule(
     {
-        schedule: '5 19 * * *',
+        schedule: '0 23 * * 3',
         timeZone: 'America/Santiago',
     },
     async (event) => {
@@ -170,7 +170,7 @@ export const updateTravelDateWeekly = onSchedule(
 
 export const deleteInactiveTravelsAndPasesWeekly = onSchedule(
     {
-        schedule: '10 19 * * *',
+        schedule: '5 23 * * 3',
         timeZone: 'America/Santiago',
     },
     async (event) => {

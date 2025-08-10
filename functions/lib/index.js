@@ -1,13 +1,4 @@
 "use strict";
-// functions/src/index.ts
-/**
- * Import function triggers from their respective submodules:
- *
- * import {onCall} from "firebase-functions/v2/https";
- * import {onDocumentWritten} from "firebase-functions/v2/firestore";
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -47,19 +38,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteUser = exports.deleteInactiveTravelsAndPasesWeekly = exports.updateTravelDateWeekly = exports.enviarCorreoConQR = void 0;
 const firebase_functions_1 = require("firebase-functions");
-// Start writing functions
-// https://firebase.google.com/docs/functions/typescript
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-(0, firebase_functions_1.setGlobalOptions)({ maxInstances: 10 });
 const scheduler_1 = require("firebase-functions/scheduler");
 const app_1 = require("firebase-admin/app");
 const firestore_1 = require("firebase-admin/firestore");
@@ -68,6 +46,7 @@ const auth_1 = require("firebase-admin/auth");
 const nodemailer = __importStar(require("nodemailer"));
 const qrcode_1 = __importDefault(require("qrcode"));
 const googleapis_1 = require("googleapis");
+(0, firebase_functions_1.setGlobalOptions)({ maxInstances: 10 });
 (0, app_1.initializeApp)();
 const db = (0, firestore_1.getFirestore)();
 // Configuración de OAuth2
@@ -77,6 +56,9 @@ const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
 const USER_EMAIL = process.env.USER_EMAIL;
 const REDIRECT_URI = "https://developers.google.com/oauthplayground";
 exports.enviarCorreoConQR = (0, https_1.onCall)(async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Se requiere autenticación para realizar esta acción.");
+    }
     if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN || !USER_EMAIL) {
         console.error("No se han configurado las credenciales de Gmail.");
         throw new https_1.HttpsError("internal", "El servidor no está configurado para enviar correos.");
@@ -182,12 +164,11 @@ exports.enviarCorreoConQR = (0, https_1.onCall)(async (request) => {
         if (error instanceof https_1.HttpsError) {
             throw error;
         }
-        // Devolver un error genérico para otros tipos de fallos.
         throw new https_1.HttpsError("internal", "Ocurrió un error inesperado al enviar el correo.");
     }
 });
 exports.updateTravelDateWeekly = (0, scheduler_1.onSchedule)({
-    schedule: '0 17 40 * 3',
+    schedule: '0 23 * * 3',
     timeZone: 'America/Santiago',
 }, async (event) => {
     console.log("Actualizando fecha de viaje.");
@@ -198,7 +179,7 @@ exports.updateTravelDateWeekly = (0, scheduler_1.onSchedule)({
     });
 });
 exports.deleteInactiveTravelsAndPasesWeekly = (0, scheduler_1.onSchedule)({
-    schedule: '0 17 50 * 3',
+    schedule: '5 23 * * 3',
     timeZone: 'America/Santiago',
 }, async (event) => {
     console.log("Eliminando documentos de viajes y pases inactivos.");
@@ -209,6 +190,7 @@ exports.deleteInactiveTravelsAndPasesWeekly = (0, scheduler_1.onSchedule)({
     });
 });
 async function updateTravelDate(callerName) {
+    var _a;
     const db = (0, firestore_1.getFirestore)();
     const propertiesCollection = db.collection('viajes');
     const querySnapshot = await propertiesCollection.where('STATE', '==', 'ABIERTO').get();
@@ -224,18 +206,37 @@ async function updateTravelDate(callerName) {
     console.log(`Documento de fecha de viaje, con id = "${travelDateDoc.id}" encontrado.`);
     const actualTravelTimestamp = travelDateDoc.data().DATE_TRAVEL;
     const actualTravelDate = actualTravelTimestamp.toDate();
-    //Agregar una semana
+    const actualDestination = travelDateDoc.data().DESTINATION;
+    const actualCapacity = travelDateDoc.data().MAX_CAPACITY;
     const updatedTravelDate = new Date(actualTravelDate.getTime() + 7 * 24 * 60 * 60 * 1000);
     // Quitar los segundos (establecer segundos y milisegundos a 0)
     updatedTravelDate.setHours(12, 0, 0, 0);
-    await travelDateDoc.ref.update({
-        DATE_TRAVEL: updatedTravelDate,
-    }).then(() => {
-        return;
-    }).catch((error) => {
-        console.error(error.message);
-        throw error;
+    const batchCancel = db.batch();
+    querySnapshot.forEach((snap) => {
+        batchCancel.update(snap.ref, { STATE: "CERRADO" });
     });
+    try {
+        await batchCancel.commit();
+        const counterRef = db.collection('counters').doc('viajes_counter');
+        const counterSnapshot = await counterRef.get();
+        const currentNumber = counterSnapshot.exists ? (_a = counterSnapshot.data()) === null || _a === void 0 ? void 0 : _a.currentNumber : 0;
+        const newTripNumber = currentNumber + 1;
+        const nuevoViajeId = `viajes-${newTripNumber}`;
+        const nuevoViajeRef = db.collection("viajes").doc(nuevoViajeId);
+        const dataNuevoViaje = {
+            DESTINATION: actualDestination,
+            MAX_CAPACITY: actualCapacity,
+            DATE_TRAVEL: updatedTravelDate,
+            GENERATED_PASSES: 0,
+            STATE: "ABIERTO",
+            TRIP_NUMBER: newTripNumber,
+        };
+        await nuevoViajeRef.set(dataNuevoViaje);
+        await counterRef.set({ currentNumber: newTripNumber }, { merge: true });
+    }
+    catch (error) {
+        throw new Error("No se pudo crear el nuevo viaje. Inténtalo de nuevo.");
+    }
 }
 async function deleteInactiveTravelsAndPases() {
     const db = (0, firestore_1.getFirestore)();

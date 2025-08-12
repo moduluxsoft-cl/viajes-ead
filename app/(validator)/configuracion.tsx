@@ -89,8 +89,7 @@ export default function ConfiguracionScreen() {
         setSuccessMessage('');
         try {
             const dataToSave = {
-                ...formData,
-                fechaViaje: new Date(),
+                ...formData
             };
 
             await sobrescribirViajeActivo(dataToSave);

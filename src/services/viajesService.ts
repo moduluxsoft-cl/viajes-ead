@@ -71,15 +71,16 @@ export const obtenerViajeActivo = async (): Promise<Viaje | null> => {
  * Incluye logs detallados para depurar errores de batch.
  */
 export const sobrescribirViajeActivo = async (
-    config: { destino: string; fechaViaje: Date; capacidadMaxima: number }
+    config: { destino: string; capacidadMaxima: number }
 ) => {
 
-    if (!config.destino || !config.fechaViaje || config.capacidadMaxima == null) {
+    if (!config.destino || config.capacidadMaxima == null) {
         throw new Error("Datos de configuración incompletos.");
     }
 
     const abiertosQuery = query(collection(db, "viajes"), where("STATE", "==", "ABIERTO"));
     const abiertosSnap = await getDocs(abiertosQuery);
+    const docViajeAbierto = abiertosSnap.docs[0];
 
     if (!abiertosSnap.empty) {
         const batchCancel = writeBatch(db);
@@ -97,28 +98,22 @@ export const sobrescribirViajeActivo = async (
         await runTransaction(db, async (transaction) => {
             // Referencia al documento que actúa como nuestro contador.
             const counterRef = doc(db, 'counters', 'viajes_counter');
-
             const counterDoc = await transaction.get(counterRef);
-
             const currentNumber = counterDoc.exists() ? counterDoc.data().currentNumber : 0;
-
             const newTripNumber = currentNumber + 1;
-
             const nuevoViajeId = `viajes-${newTripNumber}`;
             const nuevoViajeRef = doc(db, "viajes", nuevoViajeId);
-
 
             const dataNuevoViaje = {
                 DESTINATION: config.destino,
                 MAX_CAPACITY: Number(config.capacidadMaxima),
-                DATE_TRAVEL: Timestamp.fromDate(config.fechaViaje),
+                DATE_TRAVEL: docViajeAbierto.data().DATE_TRAVEL,
                 GENERATED_PASSES: 0,
                 STATE: "ABIERTO",
                 TRIP_NUMBER: newTripNumber,
             };
 
             transaction.set(nuevoViajeRef, dataNuevoViaje);
-
             transaction.set(counterRef, { currentNumber: newTripNumber }, { merge: true });
         });
 

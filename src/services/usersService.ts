@@ -1,30 +1,20 @@
 // src/services/usersService.ts
+import {collection, deleteDoc, doc, getDocs, query, setDoc, Timestamp, updateDoc, where} from 'firebase/firestore';
+import {auth, db, firebaseConfig} from '@/config/firebase';
+import {UserData} from '@/contexts/AuthContext';
+import {deleteApp, initializeApp} from 'firebase/app';
 import {
-    collection,
-    doc,
-    getDocs,
-    updateDoc,
-    deleteDoc,
-    query,
-    where,
-    setDoc,
-    Timestamp
-} from 'firebase/firestore';
-import { auth, db, firebaseConfig } from '@/config/firebase';
-import { UserData } from '@/contexts/AuthContext';
-import { initializeApp, deleteApp } from 'firebase/app';
-import {
-    getAuth,
     createUserWithEmailAndPassword,
-    sendPasswordResetEmail,
     deleteUser,
-    updateEmail,
-    updatePassword,
+    EmailAuthProvider,
+    getAuth,
     reauthenticateWithCredential,
-    EmailAuthProvider
+    sendPasswordResetEmail,
+    updateEmail,
+    updatePassword
 } from 'firebase/auth';
 import Papa from 'papaparse';
-import { getFunctions, httpsCallable } from "@firebase/functions";
+import {getFunctions, httpsCallable} from "@firebase/functions";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const usersCollectionRef = collection(db, 'users');
@@ -91,8 +81,7 @@ export const obtenerUsuariosGestionables = async (): Promise<UserData[]> => {
     try {
         const q = query(usersCollectionRef, where('role', 'in', ['student', 'validator']));
         const querySnapshot = await getDocs(q);
-        const students = querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserData));
-        return students;
+        return querySnapshot.docs.map(doc => ({uid: doc.id, ...doc.data()} as UserData));
     } catch (error) {
         throw new Error("No se pudo obtener la lista de estudiantes.");
     }
@@ -457,14 +446,13 @@ export const eliminarUsuariosDesdeCSV = async (csvString: string): Promise<Delet
         delimiter: ',',
     });
 
-
     if (parseResult.errors.length > 0) {
-        parseResult.errors.forEach(err => console.error("Papaparse Error:", err));
         throw new Error("El archivo CSV tiene un formato incorrecto o faltan encabezados.");
     }
+
     const rows = parseResult.data;
     const functions = getFunctions();
-    const deleteUserFunction = httpsCallable(functions, 'deleteUser'); // Asumiendo que tienes una Cloud Function para esto
+    const deleteUserFunction = httpsCallable(functions, 'deleteUser');
 
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
@@ -501,7 +489,7 @@ export const eliminarUsuariosDesdeCSV = async (csvString: string): Promise<Delet
                 message = 'La función de eliminación no está configurada correctamente.';
             } else if (error.code === 'functions/permission-denied') {
                 message = 'Permiso denegado para eliminar este usuario.';
-            } else if (error.message.includes('auth/user-not-found')) { // Mensaje de error de la Cloud Function
+            } else if (error.message.includes('auth/user-not-found')) {
                 message = 'Usuario no encontrado en Firebase Authentication.';
             }
             result.errors.push({ row: rowIndex, message, email: row.email });

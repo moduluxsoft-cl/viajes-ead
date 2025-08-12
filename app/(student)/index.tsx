@@ -70,8 +70,7 @@ export default function StudentHomeScreen() {
                 toast.success('¡Éxito! Tu pase se ha generado correctamente, pero hubo un error al enviar el QR adjunto. Puedes seguir ocupando el QR disponible aquí.');
             })
         }).catch(async (error) => {
-            console.log(error);
-            toast.error('Error generando el pase: ', error.message);
+            toast.error('Error generando el pase: ' + error.message);
         }).finally(async () => {
             await loadInitialData();
             setIsCreatingPase(false);

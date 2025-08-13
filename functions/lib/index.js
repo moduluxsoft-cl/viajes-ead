@@ -45,7 +45,6 @@ const https_1 = require("firebase-functions/v2/https");
 const auth_1 = require("firebase-admin/auth");
 const nodemailer = __importStar(require("nodemailer"));
 const qrcode_1 = __importDefault(require("qrcode"));
-const googleapis_1 = require("googleapis");
 (0, firebase_functions_1.setGlobalOptions)({ maxInstances: 10 });
 (0, app_1.initializeApp)();
 const db = (0, firestore_1.getFirestore)();
@@ -54,7 +53,23 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
 const USER_EMAIL = process.env.USER_EMAIL;
-const REDIRECT_URI = "https://developers.google.com/oauthplayground";
+async function sendMailWithRetry(transporter, mailOptions, maxRetries = 4) {
+    const transientCodes = new Set(["ECONNECTION", "ETIMEDOUT", "ESOCKET", "ECONNRESET", "EPIPE"]);
+    const isTransient = (err) => ((err === null || err === void 0 ? void 0 : err.code) && transientCodes.has(err.code)) ||
+        /Connection closed|ECONNRESET|Timed? out|socket|CONN/i.test(String((err === null || err === void 0 ? void 0 : err.message) || ""));
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            await transporter.sendMail(mailOptions);
+            return;
+        }
+        catch (err) {
+            if (attempt === maxRetries || !isTransient(err))
+                throw err;
+            const delay = Math.min(8000, 400 * Math.pow(2, attempt)) + Math.random() * 200;
+            await new Promise((r) => setTimeout(r, delay));
+        }
+    }
+}
 exports.enviarCorreoConQR = (0, https_1.onCall)(async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "Se requiere autenticación para realizar esta acción.");
@@ -63,26 +78,13 @@ exports.enviarCorreoConQR = (0, https_1.onCall)(async (request) => {
         console.error("No se han configurado las credenciales de Gmail.");
         throw new https_1.HttpsError("internal", "El servidor no está configurado para enviar correos.");
     }
-    const oAuth2Client = new googleapis_1.google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
-    oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
-    const accessToken = await oAuth2Client.getAccessToken();
-    const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-            type: "OAuth2",
-            user: USER_EMAIL,
-            clientId: CLIENT_ID,
-            clientSecret: CLIENT_SECRET,
-            refreshToken: REFRESH_TOKEN,
-            accessToken: accessToken.token || "",
-        },
-    });
     try {
         const { email, contenidoQR } = request.data;
         if (!email || !contenidoQR) {
             throw new https_1.HttpsError("invalid-argument", "Se necesita un email y un contenidoQR para enviar el correo.");
         }
-        const qrDataUrl = await qrcode_1.default.toDataURL(contenidoQR);
+        // QR pequeño para adjunto liviano
+        const qrDataUrl = await qrcode_1.default.toDataURL(contenidoQR, { margin: 1, width: 250 });
         const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, "");
         const htmlTemplate = `
             <!DOCTYPE html>
@@ -151,19 +153,36 @@ exports.enviarCorreoConQR = (0, https_1.onCall)(async (request) => {
                     filename: "qr.png",
                     content: base64Data,
                     encoding: "base64",
-                    cid: 'qrimage'
-                }
-            ]
+                    cid: "qrimage",
+                    contentType: "image/png",
+                },
+            ],
         };
-        await transporter.sendMail(mailOptions);
+        // Transporte SMTP explícito (sin pasar accessToken; Nodemailer gestiona xoauth2)
+        const transporter = nodemailer.createTransport({
+            host: "smtp.gmail.com",
+            port: 465,
+            secure: true,
+            auth: {
+                type: "OAuth2",
+                user: USER_EMAIL,
+                clientId: CLIENT_ID,
+                clientSecret: CLIENT_SECRET,
+                refreshToken: REFRESH_TOKEN,
+            },
+            // Timeouts más generosos para evitar cortes tempranos bajo latencia
+            connectionTimeout: 30000,
+            greetingTimeout: 20000,
+            socketTimeout: 60000,
+        });
+        await sendMailWithRetry(transporter, mailOptions, 4);
         console.log(`Correo con QR enviado exitosamente a ${email}`);
         return { success: true, message: "Correo enviado exitosamente." };
     }
     catch (error) {
         console.error("Error al procesar y enviar el email con QR:", error);
-        if (error instanceof https_1.HttpsError) {
+        if (error instanceof https_1.HttpsError)
             throw error;
-        }
         throw new https_1.HttpsError("internal", "Ocurrió un error inesperado al enviar el correo.");
     }
 });
@@ -179,7 +198,7 @@ exports.updateTravelDateWeekly = (0, scheduler_1.onSchedule)({
     });
 });
 exports.deleteInactiveTravelsAndPasesWeekly = (0, scheduler_1.onSchedule)({
-    schedule: '5 23 * * 3',
+    schedule: '10 23 * * 3',
     timeZone: 'America/Santiago',
 }, async (event) => {
     console.log("Eliminando documentos de viajes y pases inactivos.");

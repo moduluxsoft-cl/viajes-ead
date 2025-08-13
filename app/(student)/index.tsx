@@ -35,7 +35,7 @@ export default function StudentHomeScreen() {
                 return;
             }
             const pases = await obtenerPasesEstudiante(userData.uid);
-            const paseActivoParaViajeActual = pases.find(p => p.estado === 'activo' && p.viajeId === viaje.id);
+            const paseActivoParaViajeActual = pases.find(p => (p.estado === 'activo' || p.estado === 'usado') && p.viajeId === viaje.id);
             setCurrentPase(paseActivoParaViajeActual || null);
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error inesperado.';

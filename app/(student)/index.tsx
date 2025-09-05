@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect,useMemo, useState} from 'react';
 import {RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {useAuth} from '@/contexts/AuthContext';
 import {QRGenerator} from '@/components/QRGenerator';
@@ -11,7 +11,6 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 export default function StudentHomeScreen() {
-    // Se elimina la función 'logout' de useAuth porque ya no se usa aquí.
     const { userData, loading: authLoading } = useAuth();
     const functions = getFunctions();
     const enviarCorreoConQR = httpsCallable(functions, "enviarCorreoConQR");
@@ -23,6 +22,20 @@ export default function StudentHomeScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const isGenerationBlocked = useMemo(() => {
+        const ahora = new Date();
+        const diaSemana = ahora.getDay();
+        const hora = ahora.getHours();
+
+        // Bloqueo desde el miércoles a las 13:00 hasta el jueves a las 07:59
+        const bloqueado =
+            (diaSemana === 3 && hora >= 13) ||
+            (diaSemana === 4 && hora < 8);
+
+        return bloqueado;
+    }, []);
+    const generationBlockedMessage =
+        'La generación de pases está cerrada. '
     const loadInitialData = useCallback(async () => {
         if (!userData?.uid) return;
         setLoading(true);
@@ -110,12 +123,18 @@ export default function StudentHomeScreen() {
                             <Card style={styles.emptyCard}>
                                 <Text style={styles.emptyTitle}>No tienes pase activo</Text>
                                 <Text style={styles.emptySubtitle}>Crea uno para generar tu código QR.</Text>
-                                <Button
-                                    title={isCreatingPase ? "Generando..." : "Crear Nuevo Pase"}
-                                    onPress={handleCrearPase}
-                                    style={styles.createButton}
-                                    disabled={isCreatingPase}
-                                />
+                                {isGenerationBlocked ? (
+                                    <View style={styles.blockedContainer}>
+                                        <Text style={styles.blockedMessage}>{generationBlockedMessage}</Text>
+                                    </View>
+                                ) : (
+                                    <Button
+                                        title={isCreatingPase ? "Generando..." : "Crear Nuevo Pase"}
+                                        onPress={handleCrearPase}
+                                        style={styles.createButton}
+                                        disabled={isCreatingPase}
+                                    />
+                                )}
                             </Card>
                         )
                     )}
@@ -190,4 +209,20 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     detailValue: { fontSize: 16, color: '#111827', marginBottom: 8 },
+    blockedContainer: {
+        width: '100%',
+        backgroundColor: '#fffbe5',
+        borderColor: '#fde047',
+        borderWidth: 1,
+        borderRadius: 8,
+        padding: 16,
+        alignItems: 'center',
+    },
+    blockedMessage: {
+        color: '#a16207',
+        fontSize: 14,
+        textAlign: 'center',
+        lineHeight: 20,
+        fontWeight: '500',
+    },
 });

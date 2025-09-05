@@ -18,7 +18,6 @@ import {db} from '@/config/firebase';
 import {UserData} from '@/contexts/AuthContext';
 import {encryptQRData, QRData} from './encryption';
 
-// ... (Interfaces Viaje y Pase no cambian)
 export interface Viaje {
     id: string;
     destino: string;
@@ -243,6 +242,17 @@ export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise
     if (!userData.nombre || !userData.apellido || !userData.rut || !userData.carrera) {
         throw new Error('Tu información de perfil está incompleta.');
     }
+    const ahora = new Date();
+    const diaSemana = ahora.getDay();
+    const hora = ahora.getHours();
+
+    const bloqueado = (diaSemana === 3 && hora >= 13) || (diaSemana === 4 && hora < 8);
+    if (bloqueado) {
+        throw new Error(
+            'La generación de pases está cerrada. ' +
+            'Podrás generar tu pase para el próximo viaje a partir del jueves a las 08:00 hrs.'
+        );
+    }
 
     try {
         return await runTransaction(db, async (transaction) => {
@@ -264,6 +274,7 @@ export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise
                 apellido: userData.apellido,
                 rut: userData.rut!,
                 carrera: userData.carrera!,
+                fechaViaje: viajeActivo.fechaViaje.toISOString(),
             };
             const encryptedQRData = encryptQRData(dataToEncrypt);
 
@@ -318,7 +329,7 @@ export const obtenerEstadisticasPases = async (viajeId: string) => {
 
     return {
         totalPasesGenerados,
-        estudiantesUnicosConQR: estudiantesConQR.size, // Cantidad de estudiantes únicos
+        estudiantesUnicosConQR: estudiantesConQR.size,
         pasesUsadosUnaVez,
         pasesUsadosDosVeces,
     };

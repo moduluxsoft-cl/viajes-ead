@@ -334,3 +334,7 @@ export const obtenerEstadisticasPases = async (viajeId: string) => {
         pasesUsadosDosVeces,
     };
 };
+
+
+
+

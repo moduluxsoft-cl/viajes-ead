@@ -55,9 +55,9 @@ export default function ScannerScreen() {
             let errorMessage = 'Código QR inválido o error inesperado.';
             if (error instanceof Error) {
                 if (error.message.includes("El pase no existe")) {
-                    if (decryptedData?.fechaViaje) {
+                    if (decryptedData?.paseId && decryptedData?.fechaViaje) {
                         const fechaDelQR = new Date(decryptedData.fechaViaje).toLocaleDateString('es-CL');
-                        errorMessage = `Pase no encontrado en el sistema. El QR corresponde a un viaje del día ${fechaDelQR}.`;
+                        errorMessage = `El pase que intentas usar es del viaje pasado del ${fechaDelQR}.`;
                     } else {
                         errorMessage = "Pase no encontrado. Es posible que haya sido generado para un viaje anterior y ya no sea válido.";
                     }

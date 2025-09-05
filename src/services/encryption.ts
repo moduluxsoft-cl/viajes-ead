@@ -36,20 +36,21 @@ export const decryptQRData = (encryptedData: string): QRData => {
 
         const data: QRData = JSON.parse(jsonString);
 
-        // Verificar que no haya expirado
         if (Date.now() > data.expires) {
             throw new Error('Código QR expirado');
         }
 
         return data;
     } catch (error) {
-        throw new Error('Código QR inválido o expirado');
+
+        if (error instanceof Error) {
+            if (error.message === 'Código QR expirado' || error.message === 'Datos inválidos') {
+                throw error;
+            }
+        }
+        throw new Error('Error en la decodificación del QR.');
     }
 };
 
-export const generateQRTimestamp = (): { timestamp: number; expires: number } => {
-    const now = Date.now();
-    const expires = now + (24 * 60 * 60 * 1000); // 24 horas
 
-    return { timestamp: now, expires };
-};
+

@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect,useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {useAuth} from '@/contexts/AuthContext';
 import {QRGenerator} from '@/components/QRGenerator';
@@ -6,8 +6,8 @@ import {Card} from '@/components/ui/Card';
 import {Button} from '@/components/ui/Button';
 import {LoadingSpinner} from '@/components/ui/LoadingSpinner';
 import {crearPase, obtenerPasesEstudiante, obtenerViajeActivo, Pase, Viaje} from '@/src/services/viajesService';
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { toast } from 'react-toastify';
+import {getFunctions, httpsCallable} from "firebase/functions";
+import {toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 export default function StudentHomeScreen() {
@@ -21,21 +21,10 @@ export default function StudentHomeScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isBlocked, setIsBlocked] = useState(false);
 
-    const isGenerationBlocked = useMemo(() => {
-        const ahora = new Date();
-        const diaSemana = ahora.getDay();
-        const hora = ahora.getHours();
 
-        // Bloqueo desde el miércoles a las 13:00 hasta el jueves a las 07:59
-        const bloqueado =
-            (diaSemana === 3 && hora >= 13) ||
-            (diaSemana === 4 && hora < 8);
-
-        return bloqueado;
-    }, []);
-    const generationBlockedMessage =
-        'La generación de pases está cerrada. '
+    const generationBlockedMessage = 'La generación de pases está cerrada. '
     const loadInitialData = useCallback(async () => {
         if (!userData?.uid) return;
         setLoading(true);
@@ -50,6 +39,17 @@ export default function StudentHomeScreen() {
             const pases = await obtenerPasesEstudiante(userData.uid);
             const paseActivoParaViajeActual = pases.find(p => (p.estado === 'activo' || p.estado === 'usado') && p.viajeId === viaje.id);
             setCurrentPase(paseActivoParaViajeActual || null);
+            const serverTime = await getServerTimeFromHeader();
+            const serverUtc = new Date(serverTime);
+            const diaSemana = serverUtc.getDay();
+            const hora = serverUtc.getHours();
+            setIsBlocked(
+                (diaSemana === 1 && hora >= 13) ||
+                (diaSemana === 2 && hora < 8)
+            )
+            console.log("Server time:", serverUtc);
+            console.log(diaSemana);
+            console.log(hora);
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error inesperado.';
             setError(errorMessage);
@@ -94,6 +94,14 @@ export default function StudentHomeScreen() {
         return <LoadingSpinner message="Cargando tu información..." />;
     }
 
+    async function getServerTimeFromHeader() {
+        const res = await fetch("/", { method: "HEAD", cache: "no-store" });
+        const dateHeader = res.headers.get("Date");
+        if (!dateHeader) throw new Error("No se encontró la cabecera Date");
+
+        return new Date(dateHeader);
+    }
+
     return (
         <View style={styles.gradient}>
             <SafeAreaView style={styles.container}>
@@ -123,7 +131,8 @@ export default function StudentHomeScreen() {
                             <Card style={styles.emptyCard}>
                                 <Text style={styles.emptyTitle}>No tienes pase activo</Text>
                                 <Text style={styles.emptySubtitle}>Crea uno para generar tu código QR.</Text>
-                                {isGenerationBlocked ? (
+                                {
+                                    isBlocked ? (
                                     <View style={styles.blockedContainer}>
                                         <Text style={styles.blockedMessage}>{generationBlockedMessage}</Text>
                                     </View>

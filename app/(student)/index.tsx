@@ -9,6 +9,7 @@ import {crearPase, obtenerPasesEstudiante, obtenerViajeActivo, Pase, Viaje} from
 import {getFunctions, httpsCallable} from "firebase/functions";
 import {toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import {getServerTimeFromHeader} from "@/src/services/utilsService";
 
 export default function StudentHomeScreen() {
     const { userData, loading: authLoading } = useAuth();
@@ -92,14 +93,6 @@ export default function StudentHomeScreen() {
 
     if (authLoading || (loading && !refreshing)) {
         return <LoadingSpinner message="Cargando tu información..." />;
-    }
-
-    async function getServerTimeFromHeader() {
-        const res = await fetch("/", { method: "HEAD", cache: "no-store" });
-        const dateHeader = res.headers.get("Date");
-        if (!dateHeader) throw new Error("No se encontró la cabecera Date");
-
-        return new Date(dateHeader);
     }
 
     return (

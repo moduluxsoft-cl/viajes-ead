@@ -17,6 +17,7 @@ import {
 import {db} from '@/config/firebase';
 import {UserData} from '@/contexts/AuthContext';
 import {encryptQRData, QRData} from './encryption';
+import {getServerTimeFromHeader} from "@/src/services/utilsService";
 
 export interface Viaje {
     id: string;
@@ -242,11 +243,13 @@ export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise
     if (!userData.nombre || !userData.apellido || !userData.rut || !userData.carrera) {
         throw new Error('Tu información de perfil está incompleta.');
     }
-    const ahora = new Date();
-    const diaSemana = ahora.getDay();
-    const hora = ahora.getHours();
-
-    const bloqueado = (diaSemana === 3 && hora >= 13) || (diaSemana === 4 && hora < 8);
+    const serverTime = await getServerTimeFromHeader();
+    const serverUtc = new Date(serverTime);
+    const diaSemana = serverUtc.getDay();
+    const hora = serverUtc.getHours();
+    const bloqueado =
+        (diaSemana === 1 && hora >= 13) ||
+        (diaSemana === 2 && hora < 8);
     if (bloqueado) {
         throw new Error(
             'La generación de pases está cerrada. ' +

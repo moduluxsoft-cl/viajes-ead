@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { QRScanner } from '@/components/QRScanner';
 import { ResultModal } from '@/components/ResultModal';
 import { useAuth } from '@/contexts/AuthContext';
-import { decryptQRData } from '@/src/services/encryption';
+import {decryptQRData, QRData} from '@/src/services/encryption';
 import {
     validarPaseConteo,
     obtenerDetallesCompletosPase,
@@ -31,8 +31,11 @@ export default function ScannerScreen() {
         setScanning(false);
         setValidating(true);
         setShowResult(true);
+
+        let decryptedData: Partial<QRData> | null = null;
+
         try {
-            const decryptedData = decryptQRData(qrCodeData);
+            decryptedData = decryptQRData(qrCodeData);
 
             if (!decryptedData.paseId) {
                 throw new Error("El código QR no contiene un ID de pase válido.");
@@ -42,7 +45,6 @@ export default function ScannerScreen() {
 
             const hoy = new Date();
             const fechaViaje = viaje.fechaViaje;
-            // Comparamos solo el año, mes y día, ignorando la hora.
             if (hoy.toDateString() !== fechaViaje.toDateString()) {
                 throw new Error(`Este pase no es para el viaje de hoy. Es para el ${fechaViaje.toLocaleDateString('es-CL')}.`);
             }
@@ -50,9 +52,23 @@ export default function ScannerScreen() {
             await handleValidatePase(pase, viaje);
 
         } catch (error) {
+            let errorMessage = 'Código QR inválido o error inesperado.';
+            if (error instanceof Error) {
+                if (error.message.includes("El pase no existe")) {
+                    if (decryptedData?.paseId && decryptedData?.fechaViaje) {
+                        const fechaDelQR = new Date(decryptedData.fechaViaje).toLocaleDateString('es-CL');
+                        errorMessage = `El pase que intentas usar es del viaje pasado del ${fechaDelQR}.`;
+                    } else {
+                        errorMessage = "Pase no encontrado. Es posible que haya sido generado para un viaje anterior y ya no sea válido.";
+                    }
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+
             setScanResult({
                 success: false,
-                error: error instanceof Error ? error.message : 'Código QR inválido o error inesperado.'
+                error: errorMessage
             });
             setValidating(false);
         }

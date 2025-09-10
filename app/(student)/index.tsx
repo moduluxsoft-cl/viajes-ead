@@ -1,3 +1,4 @@
+// app/(student)/index.tsx
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {useAuth} from '@/contexts/AuthContext';

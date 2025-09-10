@@ -3,19 +3,35 @@ import { Stack, Redirect } from 'expo-router';
 import React from 'react';
 import {LoadingSpinner} from "@/components/ui/LoadingSpinner";
 import {useAuth} from "@/contexts/AuthContext";
-import { LogoutButton } from '@/components/ui/LogoutButton'; // Importamos el nuevo botón
+import { LogoutButton } from '@/components/ui/LogoutButton';
+import {StyleSheet, View, ViewStyle, Text} from "react-native";
 
 export default function StudentLayout() {
     const { loading, userData } = useAuth();
+    const TEST_USER_UID = 'D7G9KmuVyZYLxUVSlsFf5f2VJi63';
 
+    if (loading || !userData) {
+        return <LoadingSpinner message="Cargando..." />;
+    }
     if (!loading && (!userData || userData.role !== 'student')) {
         return <Redirect href="/(auth)/login" />;
     }
 
-    if (loading) {
-        return <LoadingSpinner message="Cargando..." />;
-    }
 
+    if (userData.role === 'student' && userData.uid !== TEST_USER_UID) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                <Card>
+                    <Text style={{ textAlign: 'center', fontSize: 18, fontWeight: 'bold' }}>
+                        Acceso Restringido
+                    </Text>
+                    <Text style={{ textAlign: 'center', marginTop: 10 }}>
+                        Esta vista está temporalmente deshabilitada.
+                    </Text>
+                </Card>
+            </View>
+        );
+    }
     return (
         <Stack
             screenOptions={{
@@ -38,3 +54,27 @@ export default function StudentLayout() {
         </Stack>
     );
 }
+
+interface CardProps {
+    children: React.ReactNode;
+    style?: ViewStyle | ViewStyle[];
+}
+
+const Card = ({ children, style }: CardProps) => (
+    <View style={[styles.card, style]}>
+        {children}
+    </View>
+);
+
+const styles = StyleSheet.create({
+    card: {
+        padding: 20,
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 5,
+    },
+});

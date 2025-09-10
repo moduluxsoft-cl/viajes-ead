@@ -249,7 +249,7 @@ export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise
     const hora = serverUtc.getHours();
     const bloqueado =
         (diaSemana === 3 && hora >= 13) ||
-        (diaSemana === 4 && hora < 16);
+        (diaSemana === 4 && hora < 19);
     if (bloqueado) {
         throw new Error(
             'La generación de pases está cerrada. ' +

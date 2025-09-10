@@ -47,7 +47,7 @@ export default function StudentHomeScreen() {
             const hora = serverUtc.getHours();
             setIsBlocked(
                 (diaSemana === 3 && hora >= 13) ||
-                (diaSemana === 4 && hora < 16)
+                (diaSemana === 4 && hora < 19)
             )
             console.log("Server time:", serverUtc);
             console.log(diaSemana);

@@ -17,21 +17,6 @@ export default function StudentLayout() {
         return <Redirect href="/(auth)/login" />;
     }
 
-
-    if (userData.role === 'student' && userData.uid !== TEST_USER_UID) {
-        return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                <Card>
-                    <Text style={{ textAlign: 'center', fontSize: 18, fontWeight: 'bold' }}>
-                        Acceso Restringido
-                    </Text>
-                    <Text style={{ textAlign: 'center', marginTop: 10 }}>
-                        Esta vista está temporalmente deshabilitada.
-                    </Text>
-                </Card>
-            </View>
-        );
-    }
     return (
         <Stack
             screenOptions={{

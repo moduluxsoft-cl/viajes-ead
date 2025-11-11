@@ -12,12 +12,16 @@ import {
     runTransaction,
     Timestamp,
     where,
-    writeBatch
+    writeBatch,
+    getFirestore,
+    setDoc,
+    updateDoc
 } from 'firebase/firestore';
 import {db} from '@/config/firebase';
 import {UserData} from '@/contexts/AuthContext';
 import {encryptQRData, QRData} from './encryption';
 import {getServerTimeFromHeader} from "@/src/services/utilsService";
+import { AuditoriaViaje } from '@/src/types/auditoria.types';
 
 export interface Viaje {
     id: string;
@@ -42,10 +46,8 @@ export interface Pase {
 
 /**
  * Obtiene el viaje que está actualmente abierto para reservas.
- * TRADUCE: Lee desde Firestore (MAYÚSCULAS) y devuelve para la App (minúsculas).
  */
 export const obtenerViajeActivo = async (): Promise<Viaje | null> => {
-    // ... (sin cambios en esta función)
     const viajesRef = collection(db, 'viajes');
     const q = query(viajesRef, where("STATE", "==", "ABIERTO"), limit(1));
     const snapshot = await getDocs(q);
@@ -96,7 +98,6 @@ export const sobrescribirViajeActivo = async (
 
     try {
         await runTransaction(db, async (transaction) => {
-            // Referencia al documento que actúa como nuestro contador.
             const counterRef = doc(db, 'counters', 'viajes_counter');
             const counterDoc = await transaction.get(counterRef);
             const currentNumber = counterDoc.exists() ? counterDoc.data().currentNumber : 0;
@@ -118,11 +119,14 @@ export const sobrescribirViajeActivo = async (
         });
 
     } catch (error) {
-        // Si la transacción falla, se lanza un error para que el frontend pueda manejarlo.
         throw new Error("No se pudo crear el nuevo viaje. Inténtalo de nuevo.");
     }
 };
-export const validarPaseConteo = async (paseId: string): Promise<{ success: boolean; message?: string; pase?: Pase; error?: string }> => {
+export const validarPaseConteo = async (
+    paseId: string,
+    validadorData?: { uid: string; nombre: string; apellido: string }
+): Promise<{ success: boolean; message?: string; pase?: Pase; error?: string }> => {
+
     const paseRef = doc(db, 'pases', paseId);
     try {
         const resultado = await runTransaction(db, async (transaction) => {
@@ -156,6 +160,14 @@ export const validarPaseConteo = async (paseId: string): Promise<{ success: bool
             };
         });
 
+        if (validadorData) {
+            if (resultado.scanCount === 1) {
+                await registrarValidacionEnAuditoria(paseId, 'IDA', validadorData);
+            } else if (resultado.scanCount === 2) {
+                await registrarValidacionEnAuditoria(paseId, 'VUELTA', validadorData);
+            }
+        }
+
         return { success: true, message: resultado.message, pase: resultado as Pase };
 
     } catch (error) {
@@ -163,7 +175,6 @@ export const validarPaseConteo = async (paseId: string): Promise<{ success: bool
         return { success: false, error: message };
     }
 };
-
 
 export const obtenerPasesEstudiante = async (estudianteId: string): Promise<Pase[]> => {
     const pasesRef = collection(db, 'pases');
@@ -303,6 +314,112 @@ export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise
     }
 };
 
+export async function registrarValidacionEnAuditoria(
+    paseId: string,
+    tipoValidacion: 'IDA' | 'VUELTA',
+    validadorData: { uid: string; nombre: string; apellido: string }
+): Promise<void> {
+    try {
+        const paseRef = doc(db, 'pases', paseId);
+        const paseDoc = await getDoc(paseRef);
+        if (!paseDoc.exists()) throw new Error('Pase no encontrado');
+
+        const paseData = paseDoc.data();
+        const viajeId = paseData.viajeId;
+        const estudianteId = paseData.estudianteId;
+
+        const viajeRef = doc(db, 'viajes', viajeId);
+        const viajeDoc = await getDoc(viajeRef);
+        if (!viajeDoc.exists()) throw new Error('Viaje no encontrado');
+        const viajeData = viajeDoc.data();
+
+        const estudianteRef = doc(db, 'users', estudianteId);
+        const estudianteDoc = await getDoc(estudianteRef);
+        if (!estudianteDoc.exists()) throw new Error('Estudiante no encontrado');
+        const estudianteData = estudianteDoc.data();
+
+        const auditoriaId = `${viajeId}_${estudianteId}`;
+
+        const auditoriaRef = doc(db, 'auditoria_viajes', auditoriaId);
+        const auditoriaDoc = await getDoc(auditoriaRef);
+
+        const horaValidacion = new Date();
+        const validacionData = {
+            validado: true,
+            horaValidacion,
+            validadorId: validadorData.uid,
+            validadorNombre: `${validadorData.nombre} ${validadorData.apellido}`
+        };
+
+        if (auditoriaDoc.exists()) {
+            const updateData: any = {};
+            if (tipoValidacion === 'IDA') {
+                updateData.validacionIda = validacionData;
+            } else {
+                updateData.validacionVuelta = validacionData;
+            }
+
+            const currentData = auditoriaDoc.data();
+            const tienIda = tipoValidacion === 'IDA' || currentData.validacionIda?.validado;
+            const tieneVuelta = tipoValidacion === 'VUELTA' || currentData.validacionVuelta?.validado;
+
+            if (tienIda && tieneVuelta) {
+                updateData.estadoUso = 'OK';
+                updateData.esAnomalia = false;
+                updateData.motivoAnomalia = null;
+            } else if (tienIda && !tieneVuelta) {
+                updateData.estadoUso = 'SOLO_IDA';
+                updateData.esAnomalia = true;
+                updateData.motivoAnomalia = 'Falta validación de vuelta';
+            } else if (!tienIda && tieneVuelta) {
+                updateData.estadoUso = 'SOLO_VUELTA';
+                updateData.esAnomalia = true;
+                updateData.motivoAnomalia = 'Falta validación de ida';
+            }
+
+            await updateDoc(auditoriaRef, updateData); // Sintaxis v9
+
+        } else {
+
+            const nuevoRegistro: AuditoriaViaje = {
+                viajeId,
+                fechaViaje: viajeData.DATE_TRAVEL.toDate(),
+                destino: viajeData.DESTINATION,
+                tripNumber: viajeData.TRIP_NUMBER,
+
+                estudianteId,
+                nombreCompleto: `${estudianteData.nombre} ${estudianteData.apellido}`,
+                rut: estudianteData.rut,
+                email: estudianteData.email,
+                carrera: estudianteData.carrera,
+
+                paseId,
+                fechaGeneracion: paseData.fechaCreacion.toDate(),
+
+                validacionIda: tipoValidacion === 'IDA' ? validacionData : {
+                    validado: false
+                },
+                validacionVuelta: tipoValidacion === 'VUELTA' ? validacionData : {
+                    validado: false
+                },
+
+                estadoUso: tipoValidacion === 'IDA' ? 'SOLO_IDA' : 'SOLO_VUELTA',
+                esAnomalia: true,
+                motivoAnomalia: tipoValidacion === 'IDA' ?
+                    'Falta validación de vuelta' : 'Falta validación de ida',
+
+                consolidado: false
+            };
+
+            await setDoc(auditoriaRef, nuevoRegistro); // Sintaxis v9
+        }
+
+        console.log(`Auditoría registrada: ${auditoriaId}, tipo: ${tipoValidacion}`);
+
+    } catch (error) {
+        console.error('Error registrando auditoría:', error);
+    }
+}
 /**
  * Obtiene estadísticas de los pases generados para un viaje específico.
  * @param viajeId El ID del viaje del que se quieren obtener las estadísticas.
@@ -336,6 +453,8 @@ export const obtenerEstadisticasPases = async (viajeId: string) => {
         pasesUsadosUnaVez,
         pasesUsadosDosVeces,
     };
+
+
 };
 
 

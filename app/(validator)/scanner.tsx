@@ -73,11 +73,17 @@ export default function ScannerScreen() {
             setValidating(false);
         }
     };
-
     const handleValidatePase = async (pase: Pase, viaje: Viaje) => {
-        if (!pase?.id) return;
+        if (!pase?.id || !userData) return;
 
-        await validarPaseConteo(pase.id).then((validationResult) => {
+        // Pasar los datos del validador
+        const validadorData = {
+            uid: userData.uid,
+            nombre: userData.nombre,
+            apellido: userData.apellido
+        };
+
+        await validarPaseConteo(pase.id, validadorData).then((validationResult) => {
             setScanResult({ ...validationResult, viaje });
         }).catch(error => {
             setScanResult({ success: false, error: error.message });

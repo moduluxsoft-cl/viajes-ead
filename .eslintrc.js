@@ -1,15 +1,12 @@
 module.exports = {
-  root: true,
-  extends: 'eslint-config-expo',
-  settings: {
-    'import/resolver': {
-      node: {
-        extensions: ['.js', '.jsx', '.ts', '.tsx'],
-        moduleDirectory: ['node_modules', '.']
-      }
-    }
-  },
-  rules: {
-    'import/no-unresolved': 'off'
-  }
+    root: true,
+    env: { es2021: true, node: true },
+    ignorePatterns: ["node_modules/", "packages/app/dist/", "firebase/hosting/public/"],
+    overrides: [
+        {
+            files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+            parserOptions: { ecmaVersion: 2021, sourceType: "module" },
+            extends: ["eslint:recommended"]
+        }
+    ]
 };

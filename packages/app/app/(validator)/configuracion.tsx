@@ -10,8 +10,8 @@ import {
     sobrescribirViajeActivo,
     Viaje
 } from '@shared/services/viajesService';
-import {EadLogo} from "assets/icons/ead-logo";
-import PucvLogo from "assets/icons/pucv-logo";
+import {EadLogo} from "@assets/icons/ead-logo";
+import PucvLogo from "@assets/icons/pucv-logo";
 import {toast} from "react-toastify";
 import {IoInformationCircle} from "react-icons/io5";
 

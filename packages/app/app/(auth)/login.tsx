@@ -17,8 +17,8 @@ import {useAuth} from '@shared/contexts/AuthContext';
 import {FirebaseError} from 'firebase/app';
 import {enviarEmailRecuperacion} from '@shared/services/usersService';
 import {useLocalSearchParams} from "expo-router";
-import {EadLogo} from "assets/icons/ead-logo";
-import PucvLogo from "assets/icons/pucv-logo";
+import {EadLogo} from "@assets/icons/ead-logo";
+import PucvLogo from "@assets/icons/pucv-logo";
 import {toast} from "react-toastify"; // Importamos la función
 
 export default function LoginScreen() {

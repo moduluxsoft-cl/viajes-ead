@@ -6,8 +6,8 @@ import {ResultModal} from '@shared/components/ResultModal';
 import {useAuth} from '@shared/contexts/AuthContext';
 import {decryptQRData, QRData} from '@shared/services/encryption';
 import {obtenerDetallesCompletosPase, Pase, validarPaseConteo, Viaje} from '@shared/services/viajesService';
-import {EadLogo} from "assets/icons/ead-logo";
-import PucvLogo from "assets/icons/pucv-logo";
+import {EadLogo} from "@assets/icons/ead-logo";
+import PucvLogo from "@assets/icons/pucv-logo";
 
 export default function ScannerScreen() {
     const { userData } = useAuth();

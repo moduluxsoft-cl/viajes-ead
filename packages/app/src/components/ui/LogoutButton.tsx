@@ -2,7 +2,7 @@
 import React, {useState} from 'react';
 import {StyleSheet, TouchableOpacity, View} from 'react-native';
 import {IoLogOutOutline} from "react-icons/io5";
-import {useAuth} from '@/contexts/AuthContext';
+import {useAuth} from '@shared/contexts/AuthContext';
 import {useRouter} from 'expo-router';
 import {ConfirmationModal} from './ConfirmationModal';
 

@@ -37,8 +37,8 @@ import {
 } from '@shared/services/usersService';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import {EadLogo} from "assets/icons/ead-logo";
-import PucvLogo from "assets/icons/pucv-logo";
+import {EadLogo} from "@assets/icons/ead-logo";
+import PucvLogo from "@assets/icons/pucv-logo";
 import {Id, toast} from "react-toastify";
 
 // --- TIPO PARA MANEJAR ACCIONES ---

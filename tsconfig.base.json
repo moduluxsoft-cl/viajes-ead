@@ -13,8 +13,9 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@app/*": ["packages/app/src/*"],
-      "@shared/*": ["packages/src/*"],
+      "@assets/*": ["packages/app/assets/*"],
+      "@app/*": ["packages/app/*"],
+      "@shared/*": ["packages/app/src/*"],
       "@firebase/*": ["firebase/functions/src/*"]
     }
   }

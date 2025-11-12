@@ -1,51 +1,20 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUser = exports.deleteInactiveTravelsAndPasesWeekly = exports.updateTravelDateWeekly = exports.enviarCorreoConQR = void 0;
+exports.consolidarAuditoriaViajes = exports.deleteUser = exports.deleteInactiveTravelsAndPasesWeekly = exports.updateTravelDateWeekly = exports.enviarCorreoConQR = void 0;
 const firebase_functions_1 = require("firebase-functions");
 const scheduler_1 = require("firebase-functions/scheduler");
 const app_1 = require("firebase-admin/app");
 const firestore_1 = require("firebase-admin/firestore");
+const firebase_admin_1 = require("firebase-admin");
 const https_1 = require("firebase-functions/v2/https");
 const auth_1 = require("firebase-admin/auth");
-const nodemailer = __importStar(require("nodemailer"));
+const nodemailer_1 = __importDefault(require("nodemailer"));
 const qrcode_1 = __importDefault(require("qrcode"));
 (0, firebase_functions_1.setGlobalOptions)({ maxInstances: 10 });
+var Timestamp = firebase_admin_1.firestore.Timestamp;
 (0, app_1.initializeApp)();
 const db = (0, firestore_1.getFirestore)();
 // Configuración de OAuth2
@@ -159,7 +128,7 @@ exports.enviarCorreoConQR = (0, https_1.onCall)(async (request) => {
             ],
         };
         // Transporte SMTP explícito (sin pasar accessToken; Nodemailer gestiona xoauth2)
-        const transporter = nodemailer.createTransport({
+        const transporter = nodemailer_1.default.createTransport({
             host: "smtp.gmail.com",
             port: 465,
             secure: true,
@@ -354,7 +323,7 @@ exports.deleteUser = (0, https_1.onCall)({ region: "us-central1" }, async (reque
     catch (error) {
         console.error("Error al eliminar usuario:", error);
         if (error instanceof https_1.HttpsError) {
-            throw error; // Re-lanzar errores HttpsError
+            throw error;
         }
         if (error instanceof Error) {
             throw new https_1.HttpsError("internal", error.message);
@@ -362,4 +331,189 @@ exports.deleteUser = (0, https_1.onCall)({ region: "us-central1" }, async (reque
         throw new https_1.HttpsError("internal", "Ocurrió un error inesperado al eliminar el usuario.");
     }
 });
+exports.consolidarAuditoriaViajes = (0, scheduler_1.onSchedule)({
+    schedule: '0 20 * * *',
+    timeZone: 'America/Santiago',
+}, async (event) => {
+    console.log("Iniciando consolidación de auditoría de viajes");
+    const db = (0, firestore_1.getFirestore)();
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const hoySinHora = Timestamp.fromDate(hoy);
+    try {
+        const viajesSnapshot = await db
+            .collection('viajes')
+            .where('DATE_TRAVEL', '>=', hoySinHora)
+            .where('DATE_TRAVEL', '<', Timestamp.fromDate(new Date(hoy.getTime() + 24 * 60 * 60 * 1000)))
+            .where('STATE', '==', 'CERRADO')
+            .get();
+        if (viajesSnapshot.empty) {
+            console.log('No hay viajes para consolidar hoy');
+            return;
+        }
+        for (const viajeDoc of viajesSnapshot.docs) {
+            const viajeId = viajeDoc.id;
+            const viajeData = viajeDoc.data();
+            console.log(`Consolidando viaje ${viajeId} - ${viajeData.DESTINATION}`);
+            const auditoriaSnapshot = await db
+                .collection('auditoria_viajes')
+                .where('viajeId', '==', viajeId)
+                .where('consolidado', '==', false)
+                .get();
+            const batch = db.batch();
+            let registrosConsolidados = 0;
+            auditoriaSnapshot.forEach(doc => {
+                var _a, _b;
+                const data = doc.data();
+                const updateData = {
+                    consolidado: true,
+                    fechaConsolidacion: Timestamp.now()
+                };
+                const tieneIda = ((_a = data.validacionIda) === null || _a === void 0 ? void 0 : _a.validado) === true;
+                const tieneVuelta = ((_b = data.validacionVuelta) === null || _b === void 0 ? void 0 : _b.validado) === true;
+                if (tieneIda && tieneVuelta) {
+                    updateData.estadoUso = 'OK';
+                    updateData.esAnomalia = false;
+                    updateData.motivoAnomalia = null;
+                }
+                else if (tieneIda && !tieneVuelta) {
+                    updateData.estadoUso = 'SOLO_IDA';
+                    updateData.esAnomalia = true;
+                    updateData.motivoAnomalia = 'No completó el viaje de vuelta';
+                }
+                else if (!tieneIda && tieneVuelta) {
+                    updateData.estadoUso = 'SOLO_VUELTA';
+                    updateData.esAnomalia = true;
+                    updateData.motivoAnomalia = 'No registró el viaje de ida';
+                }
+                else {
+                    updateData.estadoUso = 'SIN_USO';
+                    updateData.esAnomalia = true;
+                    updateData.motivoAnomalia = 'QR generado pero no utilizado';
+                }
+                batch.update(doc.ref, updateData);
+                registrosConsolidados++;
+            });
+            await registrarPasesSinUso(viajeId, viajeData);
+            if (registrosConsolidados > 0) {
+                await batch.commit();
+                console.log(`${registrosConsolidados} registros consolidados para viaje ${viajeId}`);
+            }
+            await actualizarEstadisticasViaje(viajeId);
+        }
+        console.log("Consolidación completada exitosamente");
+    }
+    catch (error) {
+        console.error('Error en consolidación:', error);
+        throw error;
+    }
+});
+async function registrarPasesSinUso(viajeId, viajeData) {
+    const db = (0, firestore_1.getFirestore)();
+    const pasesSnapshot = await db
+        .collection('pases')
+        .where('viajeId', '==', viajeId)
+        .get();
+    const pasesConQR = new Map();
+    pasesSnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.qrData) {
+            pasesConQR.set(data.estudianteId, Object.assign({ paseId: doc.id }, data));
+        }
+    });
+    const auditoriaSnapshot = await db
+        .collection('auditoria_viajes')
+        .where('viajeId', '==', viajeId)
+        .get();
+    const estudiantesConAuditoria = new Set();
+    auditoriaSnapshot.forEach(doc => {
+        estudiantesConAuditoria.add(doc.data().estudianteId);
+    });
+    const batch = db.batch();
+    let registrosCreados = 0;
+    for (const [estudianteId, paseData] of pasesConQR) {
+        if (!estudiantesConAuditoria.has(estudianteId)) {
+            const estudianteDoc = await db
+                .collection('users')
+                .doc(estudianteId)
+                .get();
+            if (estudianteDoc.exists) {
+                const estudianteData = estudianteDoc.data();
+                if (!estudianteData) {
+                    console.warn(`estudianteDoc.data() es undefined para estudianteId=${estudianteId}`);
+                    continue;
+                }
+                const auditoriaId = `${viajeId}_${estudianteId}`;
+                const auditoriaRef = db.collection('auditoria_viajes').doc(auditoriaId);
+                batch.set(auditoriaRef, {
+                    viajeId,
+                    fechaViaje: viajeData.DATE_TRAVEL,
+                    destino: viajeData.DESTINATION,
+                    tripNumber: viajeData.TRIP_NUMBER,
+                    estudianteId,
+                    nombreCompleto: `${estudianteData.nombre} ${estudianteData.apellido}`,
+                    rut: estudianteData.rut,
+                    email: estudianteData.email,
+                    carrera: estudianteData.carrera,
+                    paseId: paseData.paseId,
+                    fechaGeneracion: paseData.fechaCreacion,
+                    validacionIda: { validado: false },
+                    validacionVuelta: { validado: false },
+                    estadoUso: 'SIN_USO',
+                    esAnomalia: true,
+                    motivoAnomalia: 'QR generado pero no utilizado',
+                    consolidado: true,
+                    fechaConsolidacion: Timestamp.now()
+                });
+                registrosCreados++;
+            }
+        }
+    }
+    if (registrosCreados > 0) {
+        await batch.commit();
+        console.log(`${registrosCreados} registros de "sin uso" creados`);
+    }
+}
+async function actualizarEstadisticasViaje(viajeId) {
+    const db = (0, firestore_1.getFirestore)();
+    const auditoriaSnapshot = await db
+        .collection('auditoria_viajes')
+        .where('viajeId', '==', viajeId)
+        .where('consolidado', '==', true)
+        .get();
+    let totalOK = 0;
+    let totalSoloIda = 0;
+    let totalSoloVuelta = 0;
+    let totalSinUso = 0;
+    auditoriaSnapshot.forEach(doc => {
+        const estado = doc.data().estadoUso;
+        switch (estado) {
+            case 'OK':
+                totalOK++;
+                break;
+            case 'SOLO_IDA':
+                totalSoloIda++;
+                break;
+            case 'SOLO_VUELTA':
+                totalSoloVuelta++;
+                break;
+            case 'SIN_USO':
+                totalSinUso++;
+                break;
+        }
+    });
+    await db.collection('viajes').doc(viajeId).update({
+        STATS_CONSOLIDADAS: {
+            totalRegistros: auditoriaSnapshot.size,
+            totalOK,
+            totalSoloIda,
+            totalSoloVuelta,
+            totalSinUso,
+            porcentajeOK: auditoriaSnapshot.size > 0 ?
+                (totalOK / auditoriaSnapshot.size * 100).toFixed(2) : 0,
+            fechaUltimaConsolidacion: Timestamp.now()
+        }
+    });
+    console.log(`Estadísticas actualizadas para viaje ${viajeId}`);
+}
 //# sourceMappingURL=index.js.map

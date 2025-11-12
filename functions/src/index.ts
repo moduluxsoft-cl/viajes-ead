@@ -5,7 +5,7 @@ import {getFirestore} from "firebase-admin/firestore";
 import {firestore} from "firebase-admin";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {getAuth} from "firebase-admin/auth";
-import * as nodemailer from 'nodemailer';
+import nodemailer from 'nodemailer';
 import QRCode from "qrcode";
 
 setGlobalOptions({ maxInstances: 10 });
@@ -519,6 +519,10 @@ async function registrarPasesSinUso(viajeId: string, viajeData: any) {
 
             if (estudianteDoc.exists) {
                 const estudianteData = estudianteDoc.data();
+                if (!estudianteData) {
+                    console.warn(`estudianteDoc.data() es undefined para estudianteId=${estudianteId}`);
+                    continue;
+                }
                 const auditoriaId = `${viajeId}_${estudianteId}`;
                 const auditoriaRef = db.collection('auditoria_viajes').doc(auditoriaId);
 

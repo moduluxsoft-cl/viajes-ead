@@ -1,0 +1,33 @@
+# archivo: .github/workflows/ci-qa.yml
+name: CI QA (build check)
+on:
+  push:
+    branches: [qa]
+  pull_request:
+    branches: [qa]
+
+jobs:
+  build_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Instala dependencias del monorepo
+      - run: npm ci
+
+      # Typecheck y lint generales (opcional si aún no lo tienes)
+      - run: npm run typecheck || true
+      - run: npm run lint || true
+
+      # Build web (el mismo artefacto que va a prod)
+      - run: npm run build:web
+
+      # Instala y compila Functions en su workspace
+      - run: npm ci -w @viajes-ead/functions
+      - run: npm run typecheck -w @viajes-ead/functions || true
+      - run: npm run build -w @viajes-ead/functions

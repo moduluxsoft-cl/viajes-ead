@@ -4,6 +4,7 @@ dist
 build
 packages/app/dist
 firebase/hosting/public
+firebase/functions/*.log
 npm-debug.log*
 yarn-error.log*
 .pnpm-debug.log*

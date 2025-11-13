@@ -1,53 +1,14 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUser = exports.deleteInactiveTravelsAndPasesWeekly = exports.updateTravelDateWeekly = exports.enviarCorreoConQR = void 0;
-const firebase_functions_1 = require("firebase-functions");
-const scheduler_1 = require("firebase-functions/scheduler");
-const app_1 = require("firebase-admin/app");
-const firestore_1 = require("firebase-admin/firestore");
-const https_1 = require("firebase-functions/v2/https");
-const auth_1 = require("firebase-admin/auth");
-const nodemailer = __importStar(require("nodemailer"));
-const qrcode_1 = __importDefault(require("qrcode"));
-(0, firebase_functions_1.setGlobalOptions)({ maxInstances: 10 });
-(0, app_1.initializeApp)();
-const db = (0, firestore_1.getFirestore)();
+import { setGlobalOptions } from "firebase-functions";
+import { onSchedule } from "firebase-functions/scheduler";
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { getAuth } from "firebase-admin/auth";
+import * as nodemailer from 'nodemailer';
+import QRCode from "qrcode";
+setGlobalOptions({ maxInstances: 10 });
+initializeApp();
+const db = getFirestore();
 // Configuración de OAuth2
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -55,8 +16,8 @@ const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
 const USER_EMAIL = process.env.USER_EMAIL;
 async function sendMailWithRetry(transporter, mailOptions, maxRetries = 4) {
     const transientCodes = new Set(["ECONNECTION", "ETIMEDOUT", "ESOCKET", "ECONNRESET", "EPIPE"]);
-    const isTransient = (err) => ((err === null || err === void 0 ? void 0 : err.code) && transientCodes.has(err.code)) ||
-        /Connection closed|ECONNRESET|Timed? out|socket|CONN/i.test(String((err === null || err === void 0 ? void 0 : err.message) || ""));
+    const isTransient = (err) => (err?.code && transientCodes.has(err.code)) ||
+        /Connection closed|ECONNRESET|Timed? out|socket|CONN/i.test(String(err?.message || ""));
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
             await transporter.sendMail(mailOptions);
@@ -70,21 +31,21 @@ async function sendMailWithRetry(transporter, mailOptions, maxRetries = 4) {
         }
     }
 }
-exports.enviarCorreoConQR = (0, https_1.onCall)(async (request) => {
+export const enviarCorreoConQR = onCall(async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "Se requiere autenticación para realizar esta acción.");
+        throw new HttpsError("unauthenticated", "Se requiere autenticación para realizar esta acción.");
     }
     if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN || !USER_EMAIL) {
         console.error("No se han configurado las credenciales de Gmail.");
-        throw new https_1.HttpsError("internal", "El servidor no está configurado para enviar correos.");
+        throw new HttpsError("internal", "El servidor no está configurado para enviar correos.");
     }
     try {
         const { email, contenidoQR } = request.data;
         if (!email || !contenidoQR) {
-            throw new https_1.HttpsError("invalid-argument", "Se necesita un email y un contenidoQR para enviar el correo.");
+            throw new HttpsError("invalid-argument", "Se necesita un email y un contenidoQR para enviar el correo.");
         }
         // QR pequeño para adjunto liviano
-        const qrDataUrl = await qrcode_1.default.toDataURL(contenidoQR, { margin: 1, width: 250 });
+        const qrDataUrl = await QRCode.toDataURL(contenidoQR, { margin: 1, width: 250 });
         const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, "");
         const htmlTemplate = `
             <!DOCTYPE html>
@@ -181,12 +142,12 @@ exports.enviarCorreoConQR = (0, https_1.onCall)(async (request) => {
     }
     catch (error) {
         console.error("Error al procesar y enviar el email con QR:", error);
-        if (error instanceof https_1.HttpsError)
+        if (error instanceof HttpsError)
             throw error;
-        throw new https_1.HttpsError("internal", "Ocurrió un error inesperado al enviar el correo.");
+        throw new HttpsError("internal", "Ocurrió un error inesperado al enviar el correo.");
     }
 });
-exports.updateTravelDateWeekly = (0, scheduler_1.onSchedule)({
+export const updateTravelDateWeekly = onSchedule({
     schedule: '0 23 * * 3',
     timeZone: 'America/Santiago',
 }, async (event) => {
@@ -197,7 +158,7 @@ exports.updateTravelDateWeekly = (0, scheduler_1.onSchedule)({
         console.error('Error actualizando documentos:', error);
     });
 });
-exports.deleteInactiveTravelsAndPasesWeekly = (0, scheduler_1.onSchedule)({
+export const deleteInactiveTravelsAndPasesWeekly = onSchedule({
     schedule: '10 23 * * 3',
     timeZone: 'America/Santiago',
 }, async (event) => {
@@ -209,8 +170,7 @@ exports.deleteInactiveTravelsAndPasesWeekly = (0, scheduler_1.onSchedule)({
     });
 });
 async function updateTravelDate(callerName) {
-    var _a;
-    const db = (0, firestore_1.getFirestore)();
+    const db = getFirestore();
     const propertiesCollection = db.collection('viajes');
     const querySnapshot = await propertiesCollection.where('STATE', '==', 'ABIERTO').get();
     if (querySnapshot.empty) {
@@ -222,23 +182,25 @@ async function updateTravelDate(callerName) {
         throw new Error("Se encontraron varios documentos con STATE = \"ABIERTO\".");
     }
     const travelDateDoc = querySnapshot.docs[0];
-    console.log(`Documento de fecha de viaje, con id = "${travelDateDoc.id}" encontrado.`);
-    const actualTravelTimestamp = travelDateDoc.data().DATE_TRAVEL;
-    const actualTravelDate = actualTravelTimestamp.toDate();
-    const actualDestination = travelDateDoc.data().DESTINATION;
-    const actualCapacity = travelDateDoc.data().MAX_CAPACITY;
-    const updatedTravelDate = new Date(actualTravelDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-    // Quitar los segundos (establecer segundos y milisegundos a 0)
-    updatedTravelDate.setHours(12, 0, 0, 0);
-    const batchCancel = db.batch();
-    querySnapshot.forEach((snap) => {
-        batchCancel.update(snap.ref, { STATE: "CERRADO" });
-    });
     try {
+        if (!travelDateDoc)
+            throw new Error("Documento con STATE = \"ABIERTO\" no encontrado.");
+        console.log(`Documento de fecha de viaje, con id = "${travelDateDoc.id}" encontrado.`);
+        const actualTravelTimestamp = travelDateDoc.data().DATE_TRAVEL;
+        const actualTravelDate = actualTravelTimestamp.toDate();
+        const actualDestination = travelDateDoc.data().DESTINATION;
+        const actualCapacity = travelDateDoc.data().MAX_CAPACITY;
+        const updatedTravelDate = new Date(actualTravelDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+        // Quitar los segundos (establecer segundos y milisegundos a 0)
+        updatedTravelDate.setHours(12, 0, 0, 0);
+        const batchCancel = db.batch();
+        querySnapshot.forEach((snap) => {
+            batchCancel.update(snap.ref, { STATE: "CERRADO" });
+        });
         await batchCancel.commit();
         const counterRef = db.collection('counters').doc('viajes_counter');
         const counterSnapshot = await counterRef.get();
-        const currentNumber = counterSnapshot.exists ? (_a = counterSnapshot.data()) === null || _a === void 0 ? void 0 : _a.currentNumber : 0;
+        const currentNumber = counterSnapshot.exists ? counterSnapshot.data()?.currentNumber : 0;
         const newTripNumber = currentNumber + 1;
         const nuevoViajeId = `viajes-${newTripNumber}`;
         const nuevoViajeRef = db.collection("viajes").doc(nuevoViajeId);
@@ -254,11 +216,11 @@ async function updateTravelDate(callerName) {
         await counterRef.set({ currentNumber: newTripNumber }, { merge: true });
     }
     catch (error) {
-        throw new Error("No se pudo crear el nuevo viaje. Inténtalo de nuevo.");
+        throw new Error("No se pudo crear el nuevo viaje. Inténtalo de nuevo. Causa: " + error + ".");
     }
 }
 async function deleteInactiveTravelsAndPases() {
-    const db = (0, firestore_1.getFirestore)();
+    const db = getFirestore();
     const travelsCollection = db.collection('viajes');
     try {
         // Obtener todos los documentos de la colección "viajes"
@@ -333,33 +295,32 @@ async function deleteInactiveTravelsAndPases() {
  * Solo puede ser llamada por un usuario autenticado con el rol de 'admin'.
  * Se invoca desde la app con httpsCallable.
  */
-exports.deleteUser = (0, https_1.onCall)({ region: "us-central1" }, async (request) => {
-    var _a, _b;
-    if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.token.role) !== "admin") {
-        throw new https_1.HttpsError("permission-denied", "Solo los administradores pueden eliminar usuarios.");
+export const deleteUser = onCall({ region: "us-central1" }, async (request) => {
+    if (request.auth?.token.role !== "admin") {
+        throw new HttpsError("permission-denied", "Solo los administradores pueden eliminar usuarios.");
     }
     // Los datos enviados desde la app están en request.data
     const uid = request.data.uid;
     if (!uid) {
-        throw new https_1.HttpsError("invalid-argument", "El UID del usuario es requerido.");
+        throw new HttpsError("invalid-argument", "El UID del usuario es requerido.");
     }
     try {
         // 2. Eliminar el usuario de Firebase Authentication
-        await (0, auth_1.getAuth)().deleteUser(uid);
+        await getAuth().deleteUser(uid);
         // 3. Eliminar el documento del usuario en Firestore
         await db.collection("users").doc(uid).delete();
-        console.log(`Usuario ${uid} eliminado exitosamente por ${(_b = request.auth) === null || _b === void 0 ? void 0 : _b.uid}`);
+        console.log(`Usuario ${uid} eliminado exitosamente por ${request.auth?.uid}`);
         return { success: true, message: "Usuario eliminado correctamente." };
     }
     catch (error) {
         console.error("Error al eliminar usuario:", error);
-        if (error instanceof https_1.HttpsError) {
+        if (error instanceof HttpsError) {
             throw error; // Re-lanzar errores HttpsError
         }
         if (error instanceof Error) {
-            throw new https_1.HttpsError("internal", error.message);
+            throw new HttpsError("internal", error.message);
         }
-        throw new https_1.HttpsError("internal", "Ocurrió un error inesperado al eliminar el usuario.");
+        throw new HttpsError("internal", "Ocurrió un error inesperado al eliminar el usuario.");
     }
 });
 //# sourceMappingURL=index.js.map

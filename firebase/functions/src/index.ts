@@ -1,19 +1,13 @@
 import {setGlobalOptions} from "firebase-functions";
 import {onSchedule} from "firebase-functions/scheduler";
 import {initializeApp} from "firebase-admin/app";
-import {getFirestore} from "firebase-admin/firestore";
-import {firestore} from "firebase-admin";
+import {getFirestore, Timestamp, QueryDocumentSnapshot} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {getAuth} from "firebase-admin/auth";
 import * as nodemailer from 'nodemailer';
 import QRCode from "qrcode";
 
 setGlobalOptions({ maxInstances: 10 });
-
-import firebase = require("firebase-admin");
-import Timestamp = firestore.Timestamp;
-import QueryDocumentSnapshot = firebase.firestore.QueryDocumentSnapshot;
-import DocumentData = firebase.firestore.DocumentData;
 
 initializeApp();
 const db = getFirestore();
@@ -214,24 +208,28 @@ async function updateTravelDate(callerName: String) {
     }
 
     const travelDateDoc = querySnapshot.docs[0];
-    console.log(`Documento de fecha de viaje, con id = "${travelDateDoc.id}" encontrado.`);
-
-    const actualTravelTimestamp = travelDateDoc.data().DATE_TRAVEL as Timestamp;
-    const actualTravelDate = actualTravelTimestamp.toDate();
-    const actualDestination = travelDateDoc.data().DESTINATION as string;
-    const actualCapacity = travelDateDoc.data().MAX_CAPACITY as number;
-    const updatedTravelDate = new Date(actualTravelDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-    // Quitar los segundos (establecer segundos y milisegundos a 0)
-    updatedTravelDate.setHours(12, 0, 0, 0);
-
-    const batchCancel = db.batch();
-
-    querySnapshot.forEach((snap) => {
-        batchCancel.update(snap.ref, { STATE: "CERRADO" });
-    });
 
     try {
+        if (!travelDateDoc)
+            throw new Error("Documento con STATE = \"ABIERTO\" no encontrado.");
+
+        console.log(`Documento de fecha de viaje, con id = "${travelDateDoc.id}" encontrado.`);
+
+        const actualTravelTimestamp = travelDateDoc.data().DATE_TRAVEL as Timestamp;
+        const actualTravelDate = actualTravelTimestamp.toDate();
+        const actualDestination = travelDateDoc.data().DESTINATION as string;
+        const actualCapacity = travelDateDoc.data().MAX_CAPACITY as number;
+        const updatedTravelDate = new Date(actualTravelDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        // Quitar los segundos (establecer segundos y milisegundos a 0)
+        updatedTravelDate.setHours(12, 0, 0, 0);
+
+        const batchCancel = db.batch();
+
+        querySnapshot.forEach((snap) => {
+            batchCancel.update(snap.ref, { STATE: "CERRADO" });
+        });
+
         await batchCancel.commit();
 
         const counterRef = db.collection('counters').doc('viajes_counter');
@@ -253,7 +251,7 @@ async function updateTravelDate(callerName: String) {
         await nuevoViajeRef.set(dataNuevoViaje);
         await counterRef.set({ currentNumber: newTripNumber }, { merge: true });
     } catch (error) {
-        throw new Error("No se pudo crear el nuevo viaje. Inténtalo de nuevo.");
+        throw new Error("No se pudo crear el nuevo viaje. Inténtalo de nuevo. Causa: " + error + ".");
     }
 }
 
@@ -272,8 +270,8 @@ async function deleteInactiveTravelsAndPases() {
 
         const batch = db.batch();
         let viajeAbiertoEncontrado = false;
-        let docsToDelete: QueryDocumentSnapshot<DocumentData>[] = [];
-        let activeTravelDoc: QueryDocumentSnapshot<DocumentData>;
+        let docsToDelete: QueryDocumentSnapshot[] = [];
+        let activeTravelDoc: QueryDocumentSnapshot;
 
         // Iterar sobre todos los documentos
         travelsQuerySnapshot.forEach((doc) => {

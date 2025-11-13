@@ -2,7 +2,7 @@
   "name": "@viajes-ead/app",
   "private": true,
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "expo-router/entry",
   "type": "module",
   "scripts": {
     "start": "expo start",

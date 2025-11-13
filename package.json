@@ -2,14 +2,14 @@
   "name": "viajes-ead",
   "private": true,
   "workspaces": [
-    "packages/*",
+    "packages",
     "firebase/functions"
   ],
   "engines": {
     "node": ">=18 <=22"
   },
   "scripts": {
-    "build:web": "npm run web:export -w @viajes-ead/app && shx rm -rf firebase/hosting/public && shx mkdir -p firebase/hosting/public && shx cp -r packages/app/dist/* firebase/hosting/public/",
+    "build:web": "npm run web:export -w @viajes-ead/app && shx rm -rf firebase/hosting/public && shx mkdir -p firebase/hosting/public && shx cp -r packages/dist/* firebase/hosting/public/",
     "qa:prepare": "npm ci && npm run build:web && npm run build -w @viajes-ead/functions",
     "qa:serve:hosting": "npm run build:web && (cd firebase && npx firebase emulators:start --only hosting --project default --config firebase.json)",
     "qa:serve:functions": "npm run build -w @viajes-ead/functions && (cd firebase && npx firebase emulators:start --only functions --project default --config firebase.json)",

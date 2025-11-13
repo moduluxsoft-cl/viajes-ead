@@ -6,16 +6,30 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "assets/images/favicon.png",
-    "updates": {
-      "url": "",
-      "fallbackToCacheTimeout": 0
-    },
-    "assetBundlePatterns": ["**/*"],
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "web": {
       "bundler": "metro",
+      "output": "static",
       "favicon": "assets/images/favicon.png",
-      "output": "static"
+      "build": {
+        "babel": {
+          "include": ["@expo/vector-icons"]
+        }
+      }
     },
-    "plugins": []
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "La aplicación necesita acceso a la cámara para escanear los códigos QR de los pases de viaje."
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }

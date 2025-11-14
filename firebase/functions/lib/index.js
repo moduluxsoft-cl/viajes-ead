@@ -1,10 +1,10 @@
 import { setGlobalOptions } from "firebase-functions";
 import { onSchedule } from "firebase-functions/scheduler";
 import { initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { getAuth } from "firebase-admin/auth";
-import * as nodemailer from 'nodemailer';
+import nodemailer from 'nodemailer';
 import QRCode from "qrcode";
 setGlobalOptions({ maxInstances: 10 });
 initializeApp();
@@ -315,7 +315,7 @@ export const deleteUser = onCall({ region: "us-central1" }, async (request) => {
     catch (error) {
         console.error("Error al eliminar usuario:", error);
         if (error instanceof HttpsError) {
-            throw error; // Re-lanzar errores HttpsError
+            throw error;
         }
         if (error instanceof Error) {
             throw new HttpsError("internal", error.message);
@@ -323,4 +323,191 @@ export const deleteUser = onCall({ region: "us-central1" }, async (request) => {
         throw new HttpsError("internal", "Ocurrió un error inesperado al eliminar el usuario.");
     }
 });
+export const consolidarAuditoriaViajes = onSchedule({
+    schedule: '0 20 * * *',
+    timeZone: 'America/Santiago',
+}, async (event) => {
+    console.log("Iniciando consolidación de auditoría de viajes");
+    const db = getFirestore();
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const hoySinHora = Timestamp.fromDate(hoy);
+    try {
+        const viajesSnapshot = await db
+            .collection('viajes')
+            .where('DATE_TRAVEL', '>=', hoySinHora)
+            .where('DATE_TRAVEL', '<', Timestamp.fromDate(new Date(hoy.getTime() + 24 * 60 * 60 * 1000)))
+            .where('STATE', '==', 'CERRADO')
+            .get();
+        if (viajesSnapshot.empty) {
+            console.log('No hay viajes para consolidar hoy');
+            return;
+        }
+        for (const viajeDoc of viajesSnapshot.docs) {
+            const viajeId = viajeDoc.id;
+            const viajeData = viajeDoc.data();
+            console.log(`Consolidando viaje ${viajeId} - ${viajeData.DESTINATION}`);
+            const auditoriaSnapshot = await db
+                .collection('auditoria_viajes')
+                .where('viajeId', '==', viajeId)
+                .where('consolidado', '==', false)
+                .get();
+            const batch = db.batch();
+            let registrosConsolidados = 0;
+            auditoriaSnapshot.forEach(doc => {
+                const data = doc.data();
+                const updateData = {
+                    consolidado: true,
+                    fechaConsolidacion: Timestamp.now()
+                };
+                const tieneIda = data.validacionIda?.validado === true;
+                const tieneVuelta = data.validacionVuelta?.validado === true;
+                if (tieneIda && tieneVuelta) {
+                    updateData.estadoUso = 'OK';
+                    updateData.esAnomalia = false;
+                    updateData.motivoAnomalia = null;
+                }
+                else if (tieneIda && !tieneVuelta) {
+                    updateData.estadoUso = 'SOLO_IDA';
+                    updateData.esAnomalia = true;
+                    updateData.motivoAnomalia = 'No completó el viaje de vuelta';
+                }
+                else if (!tieneIda && tieneVuelta) {
+                    updateData.estadoUso = 'SOLO_VUELTA';
+                    updateData.esAnomalia = true;
+                    updateData.motivoAnomalia = 'No registró el viaje de ida';
+                }
+                else {
+                    updateData.estadoUso = 'SIN_USO';
+                    updateData.esAnomalia = true;
+                    updateData.motivoAnomalia = 'QR generado pero no utilizado';
+                }
+                batch.update(doc.ref, updateData);
+                registrosConsolidados++;
+            });
+            await registrarPasesSinUso(viajeId, viajeData);
+            if (registrosConsolidados > 0) {
+                await batch.commit();
+                console.log(`${registrosConsolidados} registros consolidados para viaje ${viajeId}`);
+            }
+            await actualizarEstadisticasViaje(viajeId);
+        }
+        console.log("Consolidación completada exitosamente");
+    }
+    catch (error) {
+        console.error('Error en consolidación:', error);
+        throw error;
+    }
+});
+async function registrarPasesSinUso(viajeId, viajeData) {
+    const db = getFirestore();
+    const pasesSnapshot = await db
+        .collection('pases')
+        .where('viajeId', '==', viajeId)
+        .get();
+    const pasesConQR = new Map();
+    pasesSnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.qrData) {
+            pasesConQR.set(data.estudianteId, {
+                paseId: doc.id,
+                ...data
+            });
+        }
+    });
+    const auditoriaSnapshot = await db
+        .collection('auditoria_viajes')
+        .where('viajeId', '==', viajeId)
+        .get();
+    const estudiantesConAuditoria = new Set();
+    auditoriaSnapshot.forEach(doc => {
+        estudiantesConAuditoria.add(doc.data().estudianteId);
+    });
+    const batch = db.batch();
+    let registrosCreados = 0;
+    for (const [estudianteId, paseData] of pasesConQR) {
+        if (!estudiantesConAuditoria.has(estudianteId)) {
+            const estudianteDoc = await db
+                .collection('users')
+                .doc(estudianteId)
+                .get();
+            if (estudianteDoc.exists) {
+                const estudianteData = estudianteDoc.data();
+                if (!estudianteData) {
+                    console.warn(`estudianteDoc.data() es undefined para estudianteId=${estudianteId}`);
+                    continue;
+                }
+                const auditoriaId = `${viajeId}_${estudianteId}`;
+                const auditoriaRef = db.collection('auditoria_viajes').doc(auditoriaId);
+                batch.set(auditoriaRef, {
+                    viajeId,
+                    fechaViaje: viajeData.DATE_TRAVEL,
+                    destino: viajeData.DESTINATION,
+                    tripNumber: viajeData.TRIP_NUMBER,
+                    estudianteId,
+                    nombreCompleto: `${estudianteData.nombre} ${estudianteData.apellido}`,
+                    rut: estudianteData.rut,
+                    email: estudianteData.email,
+                    carrera: estudianteData.carrera,
+                    paseId: paseData.paseId,
+                    fechaGeneracion: paseData.fechaCreacion,
+                    validacionIda: { validado: false },
+                    validacionVuelta: { validado: false },
+                    estadoUso: 'SIN_USO',
+                    esAnomalia: true,
+                    motivoAnomalia: 'QR generado pero no utilizado',
+                    consolidado: true,
+                    fechaConsolidacion: Timestamp.now()
+                });
+                registrosCreados++;
+            }
+        }
+    }
+    if (registrosCreados > 0) {
+        await batch.commit();
+        console.log(`${registrosCreados} registros de "sin uso" creados`);
+    }
+}
+async function actualizarEstadisticasViaje(viajeId) {
+    const db = getFirestore();
+    const auditoriaSnapshot = await db
+        .collection('auditoria_viajes')
+        .where('viajeId', '==', viajeId)
+        .where('consolidado', '==', true)
+        .get();
+    let totalOK = 0;
+    let totalSoloIda = 0;
+    let totalSoloVuelta = 0;
+    let totalSinUso = 0;
+    auditoriaSnapshot.forEach(doc => {
+        const estado = doc.data().estadoUso;
+        switch (estado) {
+            case 'OK':
+                totalOK++;
+                break;
+            case 'SOLO_IDA':
+                totalSoloIda++;
+                break;
+            case 'SOLO_VUELTA':
+                totalSoloVuelta++;
+                break;
+            case 'SIN_USO':
+                totalSinUso++;
+                break;
+        }
+    });
+    await db.collection('viajes').doc(viajeId).update({
+        STATS_CONSOLIDADAS: {
+            totalRegistros: auditoriaSnapshot.size,
+            totalOK,
+            totalSoloIda,
+            totalSoloVuelta,
+            totalSinUso,
+            porcentajeOK: auditoriaSnapshot.size > 0 ?
+                (totalOK / auditoriaSnapshot.size * 100).toFixed(2) : 0,
+            fechaUltimaConsolidacion: Timestamp.now()
+        }
+    });
+    console.log(`Estadísticas actualizadas para viaje ${viajeId}`);
+}
 //# sourceMappingURL=index.js.map

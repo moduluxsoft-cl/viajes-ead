@@ -39,6 +39,7 @@
     "expo-symbols": "~0.4.5",
     "expo-system-ui": "~5.0.10",
     "expo-web-browser": "~14.2.0",
+    "expo-sharing": "~14.0.7",
     "firebase": "^11.9.1",
     "firebase-functions": "^6.3.2",
     "papaparse": "^5.5.3",

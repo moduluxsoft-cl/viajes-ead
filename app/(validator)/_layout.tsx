@@ -1,10 +1,11 @@
 // app/(validator)/_layout.tsx
 import React from 'react';
 import { Tabs, Redirect, Stack } from 'expo-router';
-import { IoScan, IoPeople, IoSettings } from "react-icons/io5";
+import {IoScan, IoPeople, IoSettings, IoDocumentText} from "react-icons/io5";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { LogoutButton } from '@/components/ui/LogoutButton'; // Importamos el botón
+import { LogoutButton } from '@/components/ui/LogoutButton';
+
 
 export default function ValidatorLayout() {
     const { loading, userData } = useAuth();
@@ -80,6 +81,15 @@ export default function ValidatorLayout() {
                         title: 'Configurar',
                         tabBarIcon: ({ color, size }) => (
                             <IoSettings color={color} size={size} />
+                        ),
+                    }}
+                />
+                <Tabs.Screen
+                    name="reporteria"
+                    options={{
+                        title: 'Reportería',
+                        tabBarIcon: ({ color, size }) => (
+                            <IoDocumentText color={color} size={size} />
                         ),
                     }}
                 />

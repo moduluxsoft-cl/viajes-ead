@@ -1,6 +1,7 @@
 {
   "name": "viajes-ead",
   "private": true,
+  "version": "dev",
   "workspaces": [
     "packages",
     "firebase/functions"

@@ -7,7 +7,9 @@ import { getAuth } from "firebase-admin/auth";
 import nodemailer from 'nodemailer';
 import QRCode from "qrcode";
 setGlobalOptions({ maxInstances: 10 });
-initializeApp();
+initializeApp({
+    projectId: 'viajes-ead'
+});
 const db = getFirestore();
 // Configuración de OAuth2
 const CLIENT_ID = process.env.CLIENT_ID;

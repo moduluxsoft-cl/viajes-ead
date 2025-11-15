@@ -1,3 +1,3 @@
-// archivo: packages/app/expo-env.d.ts
-/// <reference types="expo" />
-/// <reference types="expo/router" />
+/// <reference types="expo/types" />
+
+// NOTE: This file should not be edited and should be in your git ignore

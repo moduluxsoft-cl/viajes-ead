@@ -1,0 +1,39 @@
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Instalar Java (necesario para algunos emuladores de Firebase)
+RUN apk add --no-cache openjdk21-jre-headless
+
+# Opcional pero recomendable: declarar JAVA_HOME
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk
+ENV PATH="$JAVA_HOME/bin:${PATH}"
+
+# Instalar firebase-tools global
+RUN npm install -g firebase-tools
+
+# Copiar archivos de firebase (ajusta si es necesario)
+COPY firebase/firebase.json firebase/.firebaserc ./firebase/
+COPY firebase/emulator-data ./firebase/emulator-data
+
+# Copiar sólo los manifests de Functions para instalar dependencias
+COPY package.json package-lock.json ./
+COPY firebase/functions/package.json ./firebase/functions/package.json
+
+# Instalar dependencias de funciones dentro del contenedor
+RUN npm ci --workspace @viajes-ead/functions
+
+# Copiar código y configs de functions, EXCLUYENDO node_modules
+WORKDIR /app/firebase/functions
+COPY firebase/functions/src ./src
+COPY firebase/functions/lib ./lib
+COPY firebase/functions/tsconfig*.json ./
+COPY firebase/functions/.eslintrc.cjs ./
+
+WORKDIR /app/firebase
+
+# Exponer puertos de emuladores típicos
+# (ajusta según tu firebase.json)
+EXPOSE 4000 9099 8080 5000 8085 5001 4400
+
+CMD ["firebase", "emulators:start", "--project", "viajes-ead", "--only", "functions,firestore,auth,pubsub"]

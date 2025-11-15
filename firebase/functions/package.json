@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.json",
     "serve": "npm run build && firebase emulators:start --only functions --project $FIREBASE_PROJECT --config ../firebase.json",
     "deploy": "npm run build && firebase deploy --only functions --project $FIREBASE_PROJECT --config ../firebase.json",
-    "emulators:start": "firebase emulators:start --project default --config ../firebase.json"
+    "emulators:start": "firebase emulators:start --project default --config ../firebase.json --import=../emulator-data"
   },
   "dependencies": {
     "dotenv": "^17.2.0",

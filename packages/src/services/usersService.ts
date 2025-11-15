@@ -1,6 +1,6 @@
 // src/services/usersService.ts
 import {collection, deleteDoc, doc, getDocs, query, setDoc, Timestamp, updateDoc, where} from 'firebase/firestore';
-import {auth, db, firebaseConfig} from '@shared/config/firebase';
+import {auth, db, firebaseConfig, functions} from '@shared/config/firebase';
 import {UserData} from '@shared/contexts/AuthContext';
 import {deleteApp, initializeApp} from 'firebase/app';
 import {
@@ -14,7 +14,6 @@ import {
     updatePassword
 } from 'firebase/auth';
 import Papa from 'papaparse';
-import {getFunctions, httpsCallable} from "@firebase/functions";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const usersCollectionRef = collection(db, 'users');
@@ -199,8 +198,7 @@ export const eliminarUsuarioCompleto = async (uid: string): Promise<void> => {
  */
 export const eliminarUsuarioComoAdmin = async (uid: string): Promise<void> => {
     try {
-        const functions = getFunctions();
-        const deleteUserFunction = httpsCallable(functions, 'deleteUser');
+        const deleteUserFunction = functions.httpsCallable('deleteUser');
 
         await deleteUserFunction({ uid: uid });
 
@@ -451,8 +449,7 @@ export const eliminarUsuariosDesdeCSV = async (csvString: string): Promise<Delet
     }
 
     const rows = parseResult.data;
-    const functions = getFunctions();
-    const deleteUserFunction = httpsCallable(functions, 'deleteUser');
+    const deleteUserFunction = functions.httpsCallable( 'deleteUser');
 
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];

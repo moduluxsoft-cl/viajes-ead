@@ -7,15 +7,14 @@ import {Card} from '@shared/components/ui/Card';
 import {Button} from '@shared/components/ui/Button';
 import {LoadingSpinner} from '@shared/components/ui/LoadingSpinner';
 import {crearPase, obtenerPasesEstudiante, obtenerViajeActivo, Pase, Viaje} from '@shared/services/viajesService';
-import {getFunctions, httpsCallable} from "@firebase/functions";
 import {toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {getServerTimeFromHeader} from "@shared/services/utilsService";
+import {functions} from '@shared/config/firebase';
 
 export default function StudentHomeScreen() {
     const { userData, loading: authLoading } = useAuth();
-    const functions = getFunctions();
-    const enviarCorreoConQR = httpsCallable(functions, "enviarCorreoConQR");
+    const enviarCorreoConQR = functions.httpsCallable("enviarCorreoConQR");
 
     const [viajeActivo, setViajeActivo] = useState<Viaje | null>(null);
     const [currentPase, setCurrentPase] = useState<Pase | null>(null);

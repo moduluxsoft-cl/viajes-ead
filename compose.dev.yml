@@ -1,0 +1,28 @@
+services:
+#  web:
+#    build:
+#      context: .
+#      dockerfile: DockerfileWeb
+#      args:
+#        APP_VERSION: "dev"
+#    ports:
+#      - "3000:3000"
+#    env_file:
+#      - .env
+#    environment:
+#      NODE_ENV: development
+#    depends_on:
+#      - firebase-emulators
+
+  firebase-emulators:
+    build:
+      context: .
+      dockerfile: DockerfileFirebase
+    ports:
+      - "4000:4000"
+      - "9099:9099"
+      - "8080:8080"
+      - "5000:5000"
+      - "8085:8085"
+      - "5001:5001"
+      - "4400:4400"

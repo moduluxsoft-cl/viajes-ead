@@ -9,7 +9,9 @@ import QRCode from "qrcode";
 
 setGlobalOptions({ maxInstances: 10 });
 
-initializeApp();
+initializeApp({
+    projectId: 'viajes-ead'
+});
 const db = getFirestore();
 
 // Configuración de OAuth2

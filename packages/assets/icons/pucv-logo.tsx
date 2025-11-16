@@ -11,7 +11,7 @@ const PucvLogo = ({ width, height }: PucvLogoProps) => {
     height = width / aspectRatio;
     return (
         <Image
-            source={require('@assets/images/PUCV-1.webp')}
+            source={require('../images/PUCV-1.webp')}
             style={[
                 {
                     width: width,

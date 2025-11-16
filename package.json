@@ -17,7 +17,12 @@
     "qa:serve:all": "npm run qa:prepare && npm run emulators:start -w @viajes-ead/functions",
     "deploy:hosting:prod": "npm run build:web && (cd firebase && npx firebase deploy --only hosting --project default --config firebase.json)",
     "functions:build": "npm run build -w @viajes-ead/functions",
-    "functions:typecheck": "npm run typecheck -w @viajes-ead/functions"
+    "functions:typecheck": "npm run typecheck -w @viajes-ead/functions",
+    "dev:emulators": "npm run functions:build && (cd firebase && firebase emulators:start --project viajes-ead --import=emulator-data --export-on-exit=emulator-data)",
+    "dev:init-data": "node firebase/scripts/init-firestore-data.js",
+    "dev:app": "npm run start -w @viajes-ead/app",
+    "dev:setup": "echo '📦 Instalando dependencias...' && npm install && echo '🔧 Compilando functions...' && npm run functions:build && echo '✅ Setup completo. Ejecuta: npm run dev:emulators'",
+    "dev:export-data": "(cd firebase && firebase emulators:export emulator-data --project viajes-ead)"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

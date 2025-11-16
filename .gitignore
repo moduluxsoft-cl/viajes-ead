@@ -10,3 +10,8 @@ yarn-error.log*
 .pnpm-debug.log*
 .DS_Store
 .idea
+
+# Variables de entorno (contienen credenciales sensibles)
+.env.local
+firebase/functions/.env
+*.env.local

@@ -30,19 +30,22 @@ const compatApp = firebaseCompat.apps.length
 const functions = compatApp.functions();
 
 // ---- EMULADORES ----
-const useEmulators = true
-    //process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATORS === 'true';
+// Lee de variables de entorno, con fallback a valores locales para desarrollo
+const useEmulators = process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATORS === 'true';
 
 if (useEmulators) {
-    const host = 'localhost'
-        //process.env.EXPO_PUBLIC_FIREBASE_EMULATOR_HOST || window.location.hostname;
+    // Determina el host: usa variable de entorno, o 'localhost' por defecto
+    const host = process.env.EXPO_PUBLIC_FIREBASE_EMULATOR_HOST || 'localhost';
 
-    const firestorePort = 8080
-        //Number(process.env.EXPO_PUBLIC_FIRESTORE_EMULATOR_PORT ?? '8080');
-    const authPort = 9099
-        //Number(process.env.EXPO_PUBLIC_AUTH_EMULATOR_PORT ?? '9099');
-    const functionsPort = 5001
-        //Number(process.env.EXPO_PUBLIC_FUNCTIONS_EMULATOR_PORT ?? '5001');
+    // Lee los puertos desde variables de entorno con valores por defecto
+    const firestorePort = Number(process.env.EXPO_PUBLIC_FIRESTORE_EMULATOR_PORT ?? '8080');
+    const authPort = Number(process.env.EXPO_PUBLIC_AUTH_EMULATOR_PORT ?? '9099');
+    const functionsPort = Number(process.env.EXPO_PUBLIC_FUNCTIONS_EMULATOR_PORT ?? '5001');
+
+    console.log(`🔧 Conectando a Firebase Emulators en ${host}`);
+    console.log(`  - Firestore: ${host}:${firestorePort}`);
+    console.log(`  - Auth: ${host}:${authPort}`);
+    console.log(`  - Functions: ${host}:${functionsPort}`);
 
     connectFirestoreEmulator(db, host, firestorePort);
     connectAuthEmulator(auth, `http://${host}:${authPort}`, { disableWarnings: true });

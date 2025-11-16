@@ -96,6 +96,17 @@ async function initializeData() {
         rut: '20.123.456-7'
       },
       {
+        uid: 'cristoca2012',
+        activo: true,
+        apellido: 'CRISTÓBAL',
+        carrera: 'N/A',
+        email: 'cristoca2012@gmail.com',
+        fechaCreacion: admin.firestore.Timestamp.now(),
+        nombre: 'CRISTÓBAL',
+        role: 'admin',
+        rut: '12.345.678-9'
+      },
+      {
         uid: 'test-admin-1',
         activo: true,
         apellido: 'ADMIN',
@@ -398,7 +409,7 @@ async function initializeData() {
     console.log('\n📊 Resumen:');
     console.log('  - 1 counter (currentNumber: 25)');
     console.log('  - 6 properties (4 carreras + 2 configuraciones)');
-    console.log('  - 6 usuarios (4 estudiantes, 1 admin, 1 validator)');
+    console.log('  - 7 usuarios (4 estudiantes, 2 admins, 1 validator)');
     console.log('  - 4 viajes (3 cerrados, 1 abierto)');
     console.log(`  - ${auditorias.length} registros de auditoría`);
     console.log('    ├─ Sin uso: 3');
@@ -408,6 +419,7 @@ async function initializeData() {
     console.log('    └─ Consolidados: 3');
     console.log('\n🌐 Accede a Firestore Emulator UI: http://localhost:4000/firestore');
     console.log('👤 Usuarios disponibles para login (configura contraseñas en Auth UI):');
+    console.log('   - cristoca2012@gmail.com (admin) ⭐');
     console.log('   - daniel.segoviavega@gmail.com (student)');
     console.log('   - valentina.cartes.c@mail.pucv.cl (student)');
     console.log('   - juan.perez@mail.pucv.cl (student)');

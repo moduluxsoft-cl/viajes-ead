@@ -30,8 +30,14 @@ const compatApp = firebaseCompat.apps.length
 const functions = compatApp.functions();
 
 // ---- EMULADORES ----
-// Lee de variables de entorno, con fallback a valores locales para desarrollo
-const useEmulators = process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATORS === 'true';
+// TEMPORAL: Forzar uso de emulators para desarrollo local
+// Lee de variables de entorno, con fallback a TRUE para desarrollo
+const useEmulators = process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATORS === 'true' || true;
+
+// Debug: Mostrar estado de variables de entorno
+console.log('🔍 DEBUG - Variables de entorno:');
+console.log('  EXPO_PUBLIC_USE_FIREBASE_EMULATORS:', process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATORS);
+console.log('  useEmulators (resultado):', useEmulators);
 
 if (useEmulators) {
     // Determina el host: usa variable de entorno, o 'localhost' por defecto

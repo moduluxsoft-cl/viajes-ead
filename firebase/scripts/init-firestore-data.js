@@ -190,13 +190,13 @@ async function initializeData() {
     console.log('📝 Creando registros de auditoría...');
 
     const auditorias = [
-      // Auditoría 1: Pase sin uso
+      // Auditoría 1: Pase sin uso (ANOMALÍA)
       {
         carrera: 'Ingeniería Informática',
         consolidado: false,
         destino: 'Ciudad Abierta, Ritoque',
         email: 'daniel.segoviavega@gmail.com',
-        esAnomalia: false,
+        esAnomalia: true,
         estadoUso: 'SIN_USO',
         estudianteId: 'dsego',
         fechaGeneracion: admin.firestore.Timestamp.fromDate(new Date('2025-11-09T13:22:48-03:00')),
@@ -206,11 +206,11 @@ async function initializeData() {
         rut: '18.758.759-k',
         tripNumber: 22,
         validacionIda: {
-          horaValidacion: admin.firestore.Timestamp.fromDate(new Date('2025-11-09T16:24:55-03:00')),
+          horaValidacion: null,
           validado: false
         },
         validacionVuelta: {
-          horaValidacion: admin.firestore.Timestamp.fromDate(new Date('2025-11-09T16:24:51-03:00')),
+          horaValidacion: null,
           validado: false
         },
         viajeId: 'viajes-22'
@@ -242,13 +242,13 @@ async function initializeData() {
         viajeId: 'viajes-22'
       },
 
-      // Auditoría 3: Solo validado ida
+      // Auditoría 3: Solo validado ida (ANOMALÍA - PARCIAL)
       {
         carrera: 'Diseño',
         consolidado: false,
         destino: 'Ciudad Abierta, Ritoque',
         email: 'juan.perez@mail.pucv.cl',
-        esAnomalia: false,
+        esAnomalia: true,
         estadoUso: 'PARCIAL',
         estudianteId: 'jperez',
         fechaGeneracion: admin.firestore.Timestamp.fromDate(new Date('2025-11-12T08:30:00-03:00')),
@@ -268,13 +268,13 @@ async function initializeData() {
         viajeId: 'viajes-23'
       },
 
-      // Auditoría 4: Pase con anomalía (validado pero marcado como anomalía)
+      // Auditoría 4: Pase completamente validado (OK - sin anomalía)
       {
         carrera: 'Diseño Industrial',
         consolidado: true,
         destino: 'Ciudad Abierta, Ritoque',
         email: 'maria.lopez@mail.pucv.cl',
-        esAnomalia: true,
+        esAnomalia: false,
         estadoUso: 'USADO',
         estudianteId: 'mlopez',
         fechaGeneracion: admin.firestore.Timestamp.fromDate(new Date('2025-11-12T07:45:00-03:00')),
@@ -294,13 +294,13 @@ async function initializeData() {
         viajeId: 'viajes-23'
       },
 
-      // Auditoría 5: Pase generado pero no usado (viaje futuro)
+      // Auditoría 5: Pase generado pero no usado (ANOMALÍA)
       {
         carrera: 'Ingeniería Informática',
         consolidado: false,
         destino: 'Ciudad Abierta, Ritoque',
         email: 'daniel.segoviavega@gmail.com',
-        esAnomalia: false,
+        esAnomalia: true,
         estadoUso: 'SIN_USO',
         estudianteId: 'dsego',
         fechaGeneracion: admin.firestore.Timestamp.now(),
@@ -320,13 +320,13 @@ async function initializeData() {
         viajeId: 'viajes-24'
       },
 
-      // Auditoría 6: Múltiples pases del mismo estudiante (viaje 24)
+      // Auditoría 6: Pase sin uso (ANOMALÍA)
       {
         carrera: 'Arquitectura',
         consolidado: false,
         destino: 'Ciudad Abierta, Ritoque',
         email: 'valentina.cartes.c@mail.pucv.cl',
-        esAnomalia: false,
+        esAnomalia: true,
         estadoUso: 'SIN_USO',
         estudianteId: 'vcartes',
         fechaGeneracion: admin.firestore.Timestamp.fromDate(new Date('2025-11-18T14:30:00-03:00')),
@@ -412,11 +412,11 @@ async function initializeData() {
     console.log('  - 7 usuarios (4 estudiantes, 2 admins, 1 validator)');
     console.log('  - 4 viajes (3 cerrados, 1 abierto)');
     console.log(`  - ${auditorias.length} registros de auditoría`);
-    console.log('    ├─ Sin uso: 3');
-    console.log('    ├─ Usados: 3');
-    console.log('    ├─ Parciales: 2');
-    console.log('    ├─ Con anomalías: 2');
-    console.log('    └─ Consolidados: 3');
+    console.log('    ├─ USADO (OK): 3 registros');
+    console.log('    ├─ SIN_USO (Anomalía): 3 registros');
+    console.log('    ├─ PARCIAL (Anomalía): 2 registros');
+    console.log('    ├─ Total anomalías: 5 de 8 (62.5%)');
+    console.log('    └─ Consolidados: 3 registros');
     console.log('\n🌐 Accede a Firestore Emulator UI: http://localhost:4000/firestore');
     console.log('👤 Usuarios disponibles para login (configura contraseñas en Auth UI):');
     console.log('   - cristoca2012@gmail.com (admin) ⭐');

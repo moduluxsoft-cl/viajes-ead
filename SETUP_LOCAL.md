@@ -63,9 +63,18 @@ Esto instalará automáticamente las dependencias de:
 
 ## 🔧 Paso 2: Configuración de Variables de Entorno
 
-### 2.1 Variables para Cloud Functions (Gmail OAuth)
+### 2.1 Variables para Cloud Functions (Gmail OAuth) - **OPCIONAL**
 
-Crea el archivo `.env` en `firebase/functions/`:
+> **📝 NOTA IMPORTANTE:** Estas credenciales son **DIFERENTES** al `firebaseConfig` del frontend.
+>
+> - **firebaseConfig** (en `packages/src/config/firebase.ts`): Conecta tu app React a Firebase (Auth, Firestore)
+> - **Gmail OAuth** (este paso): Permite a las Cloud Functions enviar emails usando Gmail
+>
+> **¿Necesitas configurar esto?**
+> - ✅ **SÍ** si vas a probar la función `enviarCorreoConQR` (envío de QR por email)
+> - ❌ **NO** si solo trabajas con autenticación, Firestore, o el resto del sistema
+
+Si **SÍ necesitas** enviar emails, crea el archivo `.env` en `firebase/functions/`:
 
 ```bash
 # Desde la raíz del proyecto
@@ -81,10 +90,20 @@ REFRESH_TOKEN=tu_refresh_token_aqui
 USER_EMAIL=tu_email@gmail.com
 ```
 
-**⚠️ IMPORTANTE:**
-- Estas credenciales son necesarias solo si vas a probar el envío de correos
-- Para desarrollo local básico, puedes dejar valores dummy, pero la función `enviarCorreoConQR` fallará
-- Asegúrate de **NO** subir este archivo a Git (ya está en `.gitignore`)
+**Cómo obtener estas credenciales:**
+1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
+2. Habilita Gmail API
+3. Crea credenciales OAuth 2.0
+4. Usa [OAuth Playground](https://developers.google.com/oauth/playground/) para el refresh token
+
+**⚠️ SEGURIDAD:**
+- Estas credenciales permiten enviar emails desde tu cuenta de Gmail
+- **NO** las subas a Git (ya protegido en `.gitignore`)
+- Usa una cuenta de Gmail de prueba, no tu cuenta personal
+
+**Si NO configuras esto:**
+- La función `enviarCorreoConQR` devolverá un error controlado
+- Todo lo demás funcionará perfectamente (Auth, Firestore, otras functions)
 
 ### 2.2 Verificar variables del frontend
 

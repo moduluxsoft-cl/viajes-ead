@@ -18,10 +18,26 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
+async function clearCollection(collectionName) {
+  const snapshot = await db.collection(collectionName).get();
+  const batch = db.batch();
+  snapshot.docs.forEach(doc => batch.delete(doc.ref));
+  await batch.commit();
+}
+
 async function initializeData() {
   console.log('🚀 Inicializando datos en Firestore Emulator...\n');
 
   try {
+    // 0. LIMPIAR DATOS ANTERIORES
+    console.log('🧹 Limpiando datos anteriores...');
+    await clearCollection('counters');
+    await clearCollection('properties');
+    await clearCollection('users');
+    await clearCollection('viajes');
+    await clearCollection('auditoria_viajes');
+    console.log('✅ Datos anteriores eliminados\n');
+
     // 1. COLECCIÓN: counters
     console.log('📊 Creando colección "counters"...');
     await db.collection('counters').doc('viajes_counter').set({
@@ -198,6 +214,7 @@ async function initializeData() {
         email: 'daniel.segoviavega@gmail.com',
         esAnomalia: true,
         estadoUso: 'SIN_USO',
+        motivoAnomalia: 'El pase fue generado pero no se validó en ningún tramo del viaje',
         estudianteId: 'dsego',
         fechaGeneracion: admin.firestore.Timestamp.fromDate(new Date('2025-11-09T13:22:48-03:00')),
         fechaViaje: admin.firestore.Timestamp.fromDate(new Date('2025-11-09T13:20:44-03:00')),
@@ -223,7 +240,7 @@ async function initializeData() {
         destino: 'Ciudad Abierta, Ritoque',
         email: 'valentina.cartes.c@mail.pucv.cl',
         esAnomalia: false,
-        estadoUso: 'USADO',
+        estadoUso: 'OK',
         estudianteId: 'vcartes',
         fechaGeneracion: admin.firestore.Timestamp.fromDate(new Date('2025-11-09T10:15:30-03:00')),
         fechaViaje: admin.firestore.Timestamp.fromDate(new Date('2025-11-09T09:00:00-03:00')),
@@ -242,14 +259,15 @@ async function initializeData() {
         viajeId: 'viajes-22'
       },
 
-      // Auditoría 3: Solo validado ida (ANOMALÍA - PARCIAL)
+      // Auditoría 3: Solo validado ida (ANOMALÍA - SOLO_IDA)
       {
         carrera: 'Diseño',
         consolidado: false,
         destino: 'Ciudad Abierta, Ritoque',
         email: 'juan.perez@mail.pucv.cl',
         esAnomalia: true,
-        estadoUso: 'PARCIAL',
+        estadoUso: 'SOLO_IDA',
+        motivoAnomalia: 'El estudiante validó el tramo de ida pero no validó el tramo de vuelta',
         estudianteId: 'jperez',
         fechaGeneracion: admin.firestore.Timestamp.fromDate(new Date('2025-11-12T08:30:00-03:00')),
         fechaViaje: admin.firestore.Timestamp.fromDate(new Date('2025-11-12T09:00:00-03:00')),
@@ -275,7 +293,7 @@ async function initializeData() {
         destino: 'Ciudad Abierta, Ritoque',
         email: 'maria.lopez@mail.pucv.cl',
         esAnomalia: false,
-        estadoUso: 'USADO',
+        estadoUso: 'OK',
         estudianteId: 'mlopez',
         fechaGeneracion: admin.firestore.Timestamp.fromDate(new Date('2025-11-12T07:45:00-03:00')),
         fechaViaje: admin.firestore.Timestamp.fromDate(new Date('2025-11-12T09:00:00-03:00')),
@@ -302,6 +320,7 @@ async function initializeData() {
         email: 'daniel.segoviavega@gmail.com',
         esAnomalia: true,
         estadoUso: 'SIN_USO',
+        motivoAnomalia: 'El pase fue generado pero no se validó en ningún tramo del viaje',
         estudianteId: 'dsego',
         fechaGeneracion: admin.firestore.Timestamp.now(),
         fechaViaje: admin.firestore.Timestamp.fromDate(new Date('2025-11-19T09:00:00-03:00')),
@@ -328,6 +347,7 @@ async function initializeData() {
         email: 'valentina.cartes.c@mail.pucv.cl',
         esAnomalia: true,
         estadoUso: 'SIN_USO',
+        motivoAnomalia: 'El pase fue generado pero no se validó en ningún tramo del viaje',
         estudianteId: 'vcartes',
         fechaGeneracion: admin.firestore.Timestamp.fromDate(new Date('2025-11-18T14:30:00-03:00')),
         fechaViaje: admin.firestore.Timestamp.fromDate(new Date('2025-11-19T09:00:00-03:00')),
@@ -346,14 +366,15 @@ async function initializeData() {
         viajeId: 'viajes-24'
       },
 
-      // Auditoría 7: Solo validado vuelta (caso anómalo)
+      // Auditoría 7: Solo validado vuelta (ANOMALÍA - SOLO_VUELTA)
       {
         carrera: 'Diseño',
         consolidado: false,
         destino: 'Ciudad Abierta, Ritoque',
         email: 'juan.perez@mail.pucv.cl',
         esAnomalia: true,
-        estadoUso: 'PARCIAL',
+        estadoUso: 'SOLO_VUELTA',
+        motivoAnomalia: 'El estudiante validó el tramo de vuelta pero no validó el tramo de ida',
         estudianteId: 'jperez',
         fechaGeneracion: admin.firestore.Timestamp.fromDate(new Date('2025-11-05T08:00:00-03:00')),
         fechaViaje: admin.firestore.Timestamp.fromDate(new Date('2025-11-05T09:00:00-03:00')),
@@ -379,7 +400,7 @@ async function initializeData() {
         destino: 'Ciudad Abierta, Ritoque',
         email: 'maria.lopez@mail.pucv.cl',
         esAnomalia: false,
-        estadoUso: 'USADO',
+        estadoUso: 'OK',
         estudianteId: 'mlopez',
         fechaGeneracion: admin.firestore.Timestamp.fromDate(new Date('2025-11-05T07:30:00-03:00')),
         fechaViaje: admin.firestore.Timestamp.fromDate(new Date('2025-11-05T09:00:00-03:00')),
@@ -412,9 +433,10 @@ async function initializeData() {
     console.log('  - 7 usuarios (4 estudiantes, 2 admins, 1 validator)');
     console.log('  - 4 viajes (3 cerrados, 1 abierto)');
     console.log(`  - ${auditorias.length} registros de auditoría`);
-    console.log('    ├─ USADO (OK): 3 registros');
-    console.log('    ├─ SIN_USO (Anomalía): 3 registros');
-    console.log('    ├─ PARCIAL (Anomalía): 2 registros');
+    console.log('    ├─ OK: 3 registros (uso válido)');
+    console.log('    ├─ SIN_USO: 3 registros (anomalía)');
+    console.log('    ├─ SOLO_IDA: 1 registro (anomalía)');
+    console.log('    ├─ SOLO_VUELTA: 1 registro (anomalía)');
     console.log('    ├─ Total anomalías: 5 de 8 (62.5%)');
     console.log('    └─ Consolidados: 3 registros');
     console.log('\n🌐 Accede a Firestore Emulator UI: http://localhost:4000/firestore');

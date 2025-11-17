@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {FlatList, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native';
 import {Card} from '@shared/components/ui/Card';
 import {Button} from '@shared/components/ui/Button';
 import {LoadingSpinner} from '@shared/components/ui/LoadingSpinner';
@@ -8,7 +8,6 @@ import {AuditoriaViaje} from '@shared/types/auditoria.types';
 import {exportarReporteCSV, obtenerReportesAuditoria} from '@shared/services/reporteriaService';
 import {Picker} from '@react-native-picker/picker';
 import {IoFilter, IoWarning} from "react-icons/io5";
-import DateTimePicker from '@react-native-community/datetimepicker';
 import {getPropertyValues} from '@shared/services/configuracionService';
 
 export default function ReporteriaScreen() {
@@ -25,10 +24,25 @@ export default function ReporteriaScreen() {
     );
     const [fechaFin, setFechaFin] = useState<Date>(new Date());
     const [carreraSeleccionada, setCarreraSeleccionada] = useState<string>('todas');
-    const [showDatePicker, setShowDatePicker] = useState<{
-        visible: boolean;
-        type: 'inicio' | 'fin';
-    }>({ visible: false, type: 'inicio' });
+
+    // Helper para convertir Date a formato YYYY-MM-DD
+    const formatDateToInput = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const handleDateChange = (dateString: string, type: 'inicio' | 'fin') => {
+        const newDate = new Date(dateString + 'T00:00:00');
+        if (!isNaN(newDate.getTime())) {
+            if (type === 'inicio') {
+                setFechaInicio(newDate);
+            } else {
+                setFechaFin(newDate);
+            }
+        }
+    };
 
     // Estadísticas
     const [estadisticas, setEstadisticas] = useState({
@@ -288,23 +302,57 @@ export default function ReporteriaScreen() {
                 </View>
 
                 <View style={styles.filterRow}>
-                    <TouchableOpacity
-                        style={styles.dateButton}
-                        onPress={() => setShowDatePicker({ visible: true, type: 'inicio' })}
-                    >
-                        <Text style={styles.dateButtonText}>
-                            Desde: {fechaInicio.toLocaleDateString('es-CL')}
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.dateButton}
-                        onPress={() => setShowDatePicker({ visible: true, type: 'fin' })}
-                    >
-                        <Text style={styles.dateButtonText}>
-                            Hasta: {fechaFin.toLocaleDateString('es-CL')}
-                        </Text>
-                    </TouchableOpacity>
+                    {Platform.OS === 'web' ? (
+                        <>
+                            <View style={styles.dateInputContainer}>
+                                <Text style={styles.dateLabel}>Desde:</Text>
+                                <input
+                                    type="date"
+                                    value={formatDateToInput(fechaInicio)}
+                                    onChange={(e) => handleDateChange(e.target.value, 'inicio')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #d1d5db',
+                                        fontSize: '14px',
+                                        backgroundColor: '#fff',
+                                    }}
+                                />
+                            </View>
+                            <View style={styles.dateInputContainer}>
+                                <Text style={styles.dateLabel}>Hasta:</Text>
+                                <input
+                                    type="date"
+                                    value={formatDateToInput(fechaFin)}
+                                    onChange={(e) => handleDateChange(e.target.value, 'fin')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #d1d5db',
+                                        fontSize: '14px',
+                                        backgroundColor: '#fff',
+                                    }}
+                                />
+                            </View>
+                        </>
+                    ) : (
+                        <>
+                            <View style={styles.dateButton}>
+                                <Text style={styles.dateLabel}>Desde:</Text>
+                                <Text style={styles.dateButtonText}>
+                                    {fechaInicio.toLocaleDateString('es-CL')}
+                                </Text>
+                            </View>
+                            <View style={styles.dateButton}>
+                                <Text style={styles.dateLabel}>Hasta:</Text>
+                                <Text style={styles.dateButtonText}>
+                                    {fechaFin.toLocaleDateString('es-CL')}
+                                </Text>
+                            </View>
+                        </>
+                    )}
                 </View>
 
                 <View style={styles.pickerContainer}>
@@ -337,25 +385,6 @@ export default function ReporteriaScreen() {
                     </View>
                 }
             />
-            {showDatePicker.visible && (
-                <DateTimePicker
-                    value={showDatePicker.type === 'inicio' ? fechaInicio : fechaFin}
-                    mode="date"
-                    display="default"
-                    onChange={(event: any, selectedDate?: Date) => {
-                        setShowDatePicker({ visible: false, type: 'inicio' });
-
-                        if (event.type === 'set' && selectedDate) {
-                            const currentDate = selectedDate;
-                            if (showDatePicker.type === 'inicio') {
-                                setFechaInicio(currentDate);
-                            } else {
-                                setFechaFin(currentDate);
-                            }
-                        }
-                    }}
-                />
-            )}
         </SafeAreaView>
     );
 }
@@ -462,6 +491,17 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#374151',
         textAlign: 'center',
+    },
+    dateInputContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    dateLabel: {
+        fontSize: 12,
+        color: '#6b7280',
+        fontWeight: '600',
     },
     pickerContainer: {
         borderWidth: 1,
@@ -574,29 +614,5 @@ const styles = StyleSheet.create({
         color: '#ef4444',
         textAlign: 'center',
         marginTop: 50,
-    },
-    dateModalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    dateModalContent: {
-        backgroundColor: '#fff',
-        padding: 20,
-        borderRadius: 8,
-        width: 300,
-    },
-    dateModalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 16,
-    },
-    dateInput: {
-        borderWidth: 1,
-        borderColor: '#d1d5db',
-        borderRadius: 8,
-        padding: 10,
-        marginBottom: 16,
     },
 });

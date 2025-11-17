@@ -24,6 +24,7 @@ export default function ReporteriaScreen() {
     );
     const [fechaFin, setFechaFin] = useState<Date>(new Date());
     const [carreraSeleccionada, setCarreraSeleccionada] = useState<string>('todas');
+    const [busquedaTexto, setBusquedaTexto] = useState<string>('');
 
     // Helper para convertir Date a formato YYYY-MM-DD
     const formatDateToInput = (date: Date): string => {
@@ -80,7 +81,7 @@ export default function ReporteriaScreen() {
     useEffect(() => {
         cargarReportes();
         cargarCarreras();
-    }, []);
+    }, [cargarReportes, cargarCarreras]);
 
     const aplicarFiltros = useCallback((datos: AuditoriaViaje[]) => {
         let filtrados = [...datos];
@@ -95,13 +96,22 @@ export default function ReporteriaScreen() {
             filtrados = filtrados.filter(r => r.carrera === carreraSeleccionada);
         }
 
+        // Filtro de búsqueda por nombre o RUT
+        if (busquedaTexto.trim()) {
+            const busqueda = busquedaTexto.toLowerCase().trim();
+            filtrados = filtrados.filter(r =>
+                r.nombreCompleto.toLowerCase().includes(busqueda) ||
+                r.rut.toLowerCase().includes(busqueda)
+            );
+        }
+
         setReportesFiltrados(filtrados);
         calcularEstadisticas(filtrados);
-    }, [mostrarSoloAnomalias, carreraSeleccionada]);
+    }, [mostrarSoloAnomalias, carreraSeleccionada, busquedaTexto]);
 
     useEffect(() => {
         aplicarFiltros(reportes);
-    }, [reportes, mostrarSoloAnomalias, carreraSeleccionada]);
+    }, [reportes, mostrarSoloAnomalias, carreraSeleccionada, busquedaTexto, aplicarFiltros]);
 
     const calcularEstadisticas = (datos: AuditoriaViaje[]) => {
         const stats = {
@@ -301,6 +311,16 @@ export default function ReporteriaScreen() {
                     />
                 </View>
 
+                <View style={styles.searchContainer}>
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Buscar por nombre o RUT..."
+                        value={busquedaTexto}
+                        onChangeText={setBusquedaTexto}
+                        placeholderTextColor="#9ca3af"
+                    />
+                </View>
+
                 <View style={styles.filterRow}>
                     {Platform.OS === 'web' ? (
                         <>
@@ -444,6 +464,19 @@ const styles = StyleSheet.create({
         padding: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#e5e7eb',
+    },
+    searchContainer: {
+        marginBottom: 12,
+    },
+    searchInput: {
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 14,
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        color: '#111827',
     },
     filterRow: {
         flexDirection: 'row',

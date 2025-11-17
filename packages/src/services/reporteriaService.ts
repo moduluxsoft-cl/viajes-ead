@@ -74,11 +74,9 @@ export async function exportarReporteCSV(
         'Validación Ida': item.validacionIda?.validado ? 'Sí' : 'No',
         'Hora Ida': item.validacionIda?.horaValidacion ?
             new Date(item.validacionIda.horaValidacion).toLocaleTimeString('es-CL') : '',
-        'Validador Ida': item.validacionIda?.validadorNombre || '',
         'Validación Vuelta': item.validacionVuelta?.validado ? 'Sí' : 'No',
         'Hora Vuelta': item.validacionVuelta?.horaValidacion ?
-            new Date(item.validacionVuelta.horaValidacion).toLocaleTimeString('es-CL') : '',
-        'Validador Vuelta': item.validacionVuelta?.validadorNombre || ''
+            new Date(item.validacionVuelta.horaValidacion).toLocaleTimeString('es-CL') : ''
     }));
 
     const csv = Papa.unparse(csvData, {

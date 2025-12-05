@@ -10,6 +10,7 @@
     "web": "expo start --web",
     "web:export": "expo export --platform web",
     "test": "jest",
+    "test:integration": "jest src/services/viajesService.integration.test.ts",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },

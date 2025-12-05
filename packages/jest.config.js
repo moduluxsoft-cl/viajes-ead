@@ -2,7 +2,7 @@ module.exports = {
   preset: 'react-native',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|expo|@expo|expo-router|@react-navigation|react-native-.*|@react-native-.*)/)',
+    'node_modules/(?!(react-native|@react-native|expo|@expo|expo-router|@react-navigation|react-native-.*|@react-native-.*|firebase)/)',
   ],
   testEnvironment: 'jsdom',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],

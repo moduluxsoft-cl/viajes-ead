@@ -12,14 +12,14 @@ import {
 
 // Mock Firebase
 jest.mock('firebase/firestore', () => ({
-    doc: jest.fn(),
+    doc: jest.fn(() => ({ id: 'mock-doc-id' })),
     getDoc: jest.fn(),
     runTransaction: jest.fn(),
-    collection: jest.fn(),
+    collection: jest.fn(() => ({ id: 'mock-collection' })),
     query: jest.fn(),
     where: jest.fn(),
     getDocs: jest.fn(),
-    increment: jest.fn(),
+    increment: jest.fn((value: number) => value),
     Timestamp: {
         now: jest.fn(() => ({ toDate: () => new Date() })),
         fromDate: jest.fn((date) => ({ toDate: () => date }))
@@ -71,7 +71,10 @@ describe('viajesService', () => {
             estado: 'ABIERTO'
         };
 
-        it('should invalidate previous active passes for the same trip', async () => {
+        it('debería invalidar pases activos anteriores para el mismo viaje', async () => {
+            // Ensure doc returns an object with id for this test
+            (doc as jest.Mock).mockReturnValue({ id: 'mock-doc-id-crear' });
+
             // Mock viajeDoc exists and has capacity
             mockTransaction.get.mockResolvedValueOnce({
                 exists: () => true,
@@ -106,14 +109,18 @@ describe('viajesService', () => {
             estudianteId: 'student-123',
             scanCount: 0,
             estado: 'activo',
-            fechaCreacion: { toDate: () => new Date() }
+            fechaCreacion: { toDate: () => new Date() },
+            nombreCompleto: 'Juan Perez',
+            rut: '12345678-9'
         };
 
         const mockViajeData = {
             STATE: 'ABIERTO',
             DATE_TRAVEL: { toDate: () => new Date() }, // Today
             DESTINATION: 'Campus',
-            TRIP_NUMBER: 1
+            TRIP_NUMBER: 1,
+            MAX_CAPACITY: 40,
+            GENERATED_PASSES: 10
         };
 
         const mockEstudianteData = {
@@ -124,14 +131,21 @@ describe('viajesService', () => {
             carrera: 'Ingeniería'
         };
 
+        const mockValidadorData = {
+            uid: 'validador-1',
+            nombre: 'Admin',
+            apellido: 'User'
+        };
+
         beforeEach(() => {
-            (doc as jest.Mock).mockReturnValue({});
+            // Ensure doc returns an object with id for all tests in this block
+            (doc as jest.Mock).mockReturnValue({ id: 'mock-doc-id' });
         });
 
-        it('should fail if trip is not OPEN', async () => {
+        it('debería fallar si el viaje no está ABIERTO', async () => {
             mockTransaction.get
-                .mockResolvedValueOnce({ exists: () => true, data: () => mockPaseData, id: paseId }) // Pase
-                .mockResolvedValueOnce({ exists: () => true, data: () => ({ ...mockViajeData, STATE: 'CERRADO' }) }); // Viaje
+                .mockResolvedValueOnce({ exists: () => true, data: () => mockPaseData, id: paseId }) // 1. Pase
+                .mockResolvedValueOnce({ exists: () => true, data: () => ({ ...mockViajeData, STATE: 'CERRADO' }) }); // 2. Viaje
 
             const result = await validarPaseConteo(paseId);
 
@@ -139,13 +153,13 @@ describe('viajesService', () => {
             expect(result.error).toContain('El viaje no está abierto');
         });
 
-        it('should fail if trip date is not today', async () => {
+        it('debería fallar si la fecha del viaje no es hoy', async () => {
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
 
             mockTransaction.get
-                .mockResolvedValueOnce({ exists: () => true, data: () => mockPaseData, id: paseId }) // Pase
-                .mockResolvedValueOnce({ exists: () => true, data: () => ({ ...mockViajeData, DATE_TRAVEL: { toDate: () => yesterday } }) }); // Viaje
+                .mockResolvedValueOnce({ exists: () => true, data: () => mockPaseData, id: paseId }) // 1. Pase
+                .mockResolvedValueOnce({ exists: () => true, data: () => ({ ...mockViajeData, DATE_TRAVEL: { toDate: () => yesterday } }) }); // 2. Viaje
 
             const result = await validarPaseConteo(paseId);
 
@@ -153,14 +167,14 @@ describe('viajesService', () => {
             expect(result.error).toContain('Este pase no corresponde a la fecha del viaje de hoy');
         });
 
-        it('should successfully validate IDA and update audit atomically', async () => {
+        it('debería validar exitosamente IDA y actualizar auditoría atómicamente', async () => {
             mockTransaction.get
-                .mockResolvedValueOnce({ exists: () => true, data: () => mockPaseData, id: paseId }) // Pase
-                .mockResolvedValueOnce({ exists: () => true, data: () => mockViajeData }) // Viaje
-                .mockResolvedValueOnce({ exists: () => true, data: () => mockEstudianteData }) // Estudiante
-                .mockResolvedValueOnce({ exists: () => false }); // Auditoria (New)
+                .mockResolvedValueOnce({ exists: () => true, data: () => mockPaseData, id: paseId }) // 1. Pase
+                .mockResolvedValueOnce({ exists: () => true, data: () => mockViajeData }) // 2. Viaje
+                .mockResolvedValueOnce({ exists: () => false }) // 3. Auditoria (New)
+                .mockResolvedValueOnce({ exists: () => true, data: () => mockEstudianteData }); // 4. User (for new audit)
 
-            const result = await validarPaseConteo(paseId);
+            const result = await validarPaseConteo(paseId, mockValidadorData);
 
             expect(result.success).toBe(true);
             expect(result.message).toContain('IDA');
@@ -176,21 +190,21 @@ describe('viajesService', () => {
             }));
         });
 
-        it('should successfully validate VUELTA and update audit atomically', async () => {
+        it('debería validar exitosamente VUELTA y actualizar auditoría atómicamente', async () => {
             const mockPaseVuelta = { ...mockPaseData, scanCount: 1, estado: 'usado' };
 
             mockTransaction.get
-                .mockResolvedValueOnce({ exists: () => true, data: () => mockPaseVuelta, id: paseId }) // Pase
-                .mockResolvedValueOnce({ exists: () => true, data: () => mockViajeData }) // Viaje
-                .mockResolvedValueOnce({ exists: () => true, data: () => mockEstudianteData }) // Estudiante
+                .mockResolvedValueOnce({ exists: () => true, data: () => mockPaseVuelta, id: paseId }) // 1. Pase
+                .mockResolvedValueOnce({ exists: () => true, data: () => mockViajeData }) // 2. Viaje
                 .mockResolvedValueOnce({
-                    exists: () => true, data: () => ({ // Auditoria (Existing)
+                    exists: () => true, data: () => ({ // 3. Auditoria (Existing)
                         validacionIda: { validado: true },
                         estadoUso: 'SOLO_IDA'
                     })
                 });
+            // No User fetch for existing audit
 
-            const result = await validarPaseConteo(paseId);
+            const result = await validarPaseConteo(paseId, mockValidadorData);
 
             expect(result.success).toBe(true);
             expect(result.message).toContain('VUELTA');

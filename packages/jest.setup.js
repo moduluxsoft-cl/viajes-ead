@@ -35,8 +35,8 @@ jest.mock('firebase/app', () => ({
 
 jest.mock('firebase/firestore', () => ({
   getFirestore: jest.fn(),
-  collection: jest.fn(),
-  doc: jest.fn(),
+  collection: jest.fn(() => ({ id: 'mock-collection' })),
+  doc: jest.fn(() => ({ id: 'mock-doc-id' })),
   getDoc: jest.fn(),
   getDocs: jest.fn(),
   setDoc: jest.fn(),
@@ -46,6 +46,9 @@ jest.mock('firebase/firestore', () => ({
   where: jest.fn(),
   orderBy: jest.fn(),
   limit: jest.fn(),
+  runTransaction: jest.fn(),
+  increment: jest.fn(),
+  documentId: jest.fn(),
   Timestamp: {
     now: jest.fn(() => ({ toDate: () => new Date() })),
     fromDate: jest.fn((date) => ({ toDate: () => date })),

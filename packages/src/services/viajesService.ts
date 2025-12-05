@@ -1,4 +1,8 @@
 // src/services/viajesService.ts
+import { db } from '@shared/config/firebase';
+import { UserData } from '@shared/contexts/AuthContext';
+import { getServerTimeFromHeader } from "@shared/services/utilsService";
+import { AuditoriaViaje } from '@shared/types/auditoria.types';
 import {
     collection,
     doc,
@@ -16,11 +20,7 @@ import {
     where,
     writeBatch
 } from 'firebase/firestore';
-import {db} from '@shared/config/firebase';
-import {UserData} from '@shared/contexts/AuthContext';
-import {encryptQRData, QRData} from './encryption';
-import {getServerTimeFromHeader} from "@shared/services/utilsService";
-import {AuditoriaViaje} from '@shared/types/auditoria.types';
+import { encryptQRData, QRData } from './encryption';
 
 export interface Viaje {
     id: string;
@@ -129,27 +129,141 @@ export const validarPaseConteo = async (
 ): Promise<{ success: boolean; message?: string; pase?: Pase; error?: string }> => {
 
     const paseRef = doc(db, 'pases', paseId);
+
     try {
         const resultado = await runTransaction(db, async (transaction) => {
+            // 1. Obtener Pase
             const paseDoc = await transaction.get(paseRef);
             if (!paseDoc.exists()) throw new Error("Pase no encontrado.");
 
             const paseData = paseDoc.data() as Omit<Pase, 'id' | 'fechaCreacion'> & { fechaCreacion: Timestamp };
 
+            // 2. Obtener Viaje para validar
+            const viajeRef = doc(db, 'viajes', paseData.viajeId);
+            const viajeDoc = await transaction.get(viajeRef);
+            if (!viajeDoc.exists()) throw new Error("Viaje asociado no encontrado.");
+
+            const viajeData = viajeDoc.data();
+
+            // Validar Estado del Viaje
+            if (viajeData.STATE !== 'ABIERTO') {
+                throw new Error("El viaje no está abierto para validaciones.");
+            }
+
+            // Validar Fecha del Viaje (Debe ser HOY)
+            const fechaViaje = viajeData.DATE_TRAVEL.toDate();
+            const hoy = new Date();
+            // Comparar solo año, mes y día
+            const esHoy = fechaViaje.getDate() === hoy.getDate() &&
+                fechaViaje.getMonth() === hoy.getMonth() &&
+                fechaViaje.getFullYear() === hoy.getFullYear();
+
+            if (!esHoy) {
+                throw new Error("Este pase no corresponde a la fecha del viaje de hoy.");
+            }
+
+            // Validar Límite de Escaneos
             if ((paseData.scanCount || 0) >= 2) throw new Error("Este pase ya ha alcanzado el límite de 2 escaneos.");
 
             const nuevoScanCount = (paseData.scanCount || 0) + 1;
             let nuevoEstado: 'activo' | 'usado' | 'expirado' = paseData.estado;
             let mensaje = '';
+            let tipoValidacion: 'IDA' | 'VUELTA' = 'IDA';
 
             if (nuevoScanCount === 1) {
                 nuevoEstado = 'usado';
                 mensaje = 'Pase validado para el viaje de IDA.';
+                tipoValidacion = 'IDA';
             } else if (nuevoScanCount === 2) {
                 mensaje = 'Pase validado para el viaje de VUELTA.';
+                tipoValidacion = 'VUELTA';
             }
 
+            // 3. Actualizar Pase
             transaction.update(paseRef, { estado: nuevoEstado, scanCount: increment(1) });
+
+            // 4. Actualizar Auditoría (Atomicamente)
+            if (validadorData) {
+                const estudianteId = paseData.estudianteId;
+                const viajeId = paseData.viajeId;
+                const auditoriaId = `${viajeId}_${estudianteId}`;
+                const auditoriaRef = doc(db, 'auditoria_viajes', auditoriaId);
+                const auditoriaDoc = await transaction.get(auditoriaRef);
+
+                const horaValidacion = new Date();
+                const validacionInfo = {
+                    validado: true,
+                    horaValidacion,
+                    validadorId: validadorData.uid,
+                    validadorNombre: `${validadorData.nombre} ${validadorData.apellido}`
+                };
+
+                if (auditoriaDoc.exists()) {
+                    const currentAudit = auditoriaDoc.data();
+                    const updateData: any = {};
+
+                    if (tipoValidacion === 'IDA') {
+                        updateData.validacionIda = validacionInfo;
+                    } else {
+                        updateData.validacionVuelta = validacionInfo;
+                    }
+
+                    const tieneIda = tipoValidacion === 'IDA' || currentAudit.validacionIda?.validado;
+                    const tieneVuelta = tipoValidacion === 'VUELTA' || currentAudit.validacionVuelta?.validado;
+
+                    if (tieneIda && tieneVuelta) {
+                        updateData.estadoUso = 'OK';
+                        updateData.esAnomalia = false;
+                        updateData.motivoAnomalia = null;
+                    } else if (tieneIda && !tieneVuelta) {
+                        updateData.estadoUso = 'SOLO_IDA';
+                        updateData.esAnomalia = true;
+                        updateData.motivoAnomalia = 'Falta validación de vuelta';
+                    } else if (!tieneIda && tieneVuelta) {
+                        updateData.estadoUso = 'SOLO_VUELTA';
+                        updateData.esAnomalia = true;
+                        updateData.motivoAnomalia = 'Falta validación de ida';
+                    }
+
+                    transaction.update(auditoriaRef, updateData);
+                } else {
+                    // Obtener datos del estudiante para el registro inicial (si no existe auditoría)
+                    // Nota: Idealmente deberíamos leer el usuario también, pero para eficiencia
+                    // usaremos los datos que tenemos en el pase si es posible, o haremos un get extra.
+                    // El pase tiene nombreCompleto y rut.
+                    // Para email y carrera necesitamos el user doc.
+                    const userRef = doc(db, 'users', estudianteId);
+                    const userDoc = await transaction.get(userRef);
+                    const userData = userDoc.exists() ? userDoc.data() : {};
+
+                    const nuevoRegistro: AuditoriaViaje = {
+                        viajeId,
+                        fechaViaje: viajeData.DATE_TRAVEL.toDate(),
+                        destino: viajeData.DESTINATION,
+                        tripNumber: viajeData.TRIP_NUMBER,
+
+                        estudianteId,
+                        nombreCompleto: paseData.nombreCompleto,
+                        rut: paseData.rut,
+                        email: userData.email || '',
+                        carrera: userData.carrera || '',
+
+                        paseId: paseDoc.id,
+                        fechaGeneracion: paseData.fechaCreacion.toDate(),
+
+                        validacionIda: tipoValidacion === 'IDA' ? validacionInfo : { validado: false },
+                        validacionVuelta: tipoValidacion === 'VUELTA' ? validacionInfo : { validado: false },
+
+                        estadoUso: tipoValidacion === 'IDA' ? 'SOLO_IDA' : 'SOLO_VUELTA',
+                        esAnomalia: true,
+                        motivoAnomalia: tipoValidacion === 'IDA' ? 'Falta validación de vuelta' : 'Falta validación de ida',
+
+                        consolidado: false
+                    };
+
+                    transaction.set(auditoriaRef, nuevoRegistro);
+                }
+            }
 
             return {
                 ...paseData,
@@ -160,14 +274,6 @@ export const validarPaseConteo = async (
                 fechaCreacion: paseData.fechaCreacion.toDate()
             };
         });
-
-        if (validadorData) {
-            if (resultado.scanCount === 1) {
-                await registrarValidacionEnAuditoria(paseId, 'IDA', validadorData);
-            } else if (resultado.scanCount === 2) {
-                await registrarValidacionEnAuditoria(paseId, 'VUELTA', validadorData);
-            }
-        }
 
         return { success: true, message: resultado.message, pase: resultado as Pase };
 
@@ -270,6 +376,15 @@ export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise
     }
 
     try {
+        // Buscar pases activos anteriores para este viaje y usuario
+        const pasesRef = collection(db, 'pases');
+        const q = query(pasesRef,
+            where('estudianteId', '==', userData.uid),
+            where('viajeId', '==', viajeActivo.id),
+            where('estado', '==', 'activo')
+        );
+        const pasesAnterioresSnap = await getDocs(q);
+
         return await runTransaction(db, async (transaction) => {
             const viajeRef = doc(db, 'viajes', viajeActivo.id);
             const viajeDoc = await transaction.get(viajeRef);
@@ -278,6 +393,11 @@ export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise
 
             const pasesActuales = viajeDoc.data().GENERATED_PASSES || 0;
             if (pasesActuales >= viajeDoc.data().MAX_CAPACITY) throw new Error('No quedan cupos disponibles.');
+
+            // Invalidar pases anteriores
+            pasesAnterioresSnap.forEach((doc) => {
+                transaction.update(doc.ref, { estado: 'expirado' });
+            });
 
             const paseDocRef = doc(collection(db, 'pases'));
             const paseId = paseDocRef.id;
@@ -305,7 +425,7 @@ export const crearPase = async (userData: UserData, viajeActivo: Viaje): Promise
             };
 
             transaction.set(paseDocRef, nuevoPase);
-            transaction.update(viajeRef, {GENERATED_PASSES: increment(1)});
+            transaction.update(viajeRef, { GENERATED_PASSES: increment(1) });
 
             return { paseId, encryptedQRData };
         });

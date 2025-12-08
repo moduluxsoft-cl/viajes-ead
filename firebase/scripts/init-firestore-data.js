@@ -10,6 +10,8 @@ const admin = require('firebase-admin');
 
 // Conectar al emulator
 process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
+process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
+process.env.GCLOUD_PROJECT = 'viajes-ead';
 
 // Inicializar Firebase Admin
 admin.initializeApp({
@@ -17,6 +19,8 @@ admin.initializeApp({
 });
 
 const db = admin.firestore();
+const auth = admin.auth();
+
 
 async function initializeData() {
   console.log('🚀 Inicializando datos en Firestore Emulator...\n');
@@ -127,13 +131,66 @@ async function initializeData() {
         nombre: 'VALIDADOR',
         role: 'validator',
         rut: '22.222.222-2'
+      },
+      {
+        uid: 'test-validator-2',
+        activo: true,
+        apellido: 'VALIDADOR 2',
+        carrera: 'N/A',
+        email: 'validator2@viajes-ead.cl',
+        fechaCreacion: admin.firestore.Timestamp.now(),
+        nombre: 'VALIDADOR 2',
+        role: 'validator',
+        rut: '33.333.333-3'
+      },
+      {
+        uid: 'test-student-1',
+        activo: true,
+        apellido: 'ALUMNO PRUEBA 1',
+        carrera: 'Diseño',
+        email: 'alumno1@viajes-ead.cl',
+        fechaCreacion: admin.firestore.Timestamp.now(),
+        nombre: 'ALUMNO PRUEBA 1',
+        role: 'student',
+        rut: '44.444.444-4'
+      },
+      {
+        uid: 'test-student-2',
+        activo: true,
+        apellido: 'ALUMNO PRUEBA 2',
+        carrera: 'Arquitectura',
+        email: 'alumno2@viajes-ead.cl',
+        fechaCreacion: admin.firestore.Timestamp.now(),
+        nombre: 'ALUMNO PRUEBA 2',
+        role: 'student',
+        rut: '55.555.555-5'
       }
     ];
 
     for (const user of users) {
       const { uid, ...userData } = user;
+
+      // 1. Crear documento en Firestore
       await db.collection('users').doc(uid).set(userData);
-      console.log(`  ✓ ${userData.nombre} ${userData.apellido} (${userData.role})`);
+
+      // 2. Crear usuario en Auth
+      try {
+        await auth.createUser({
+          uid: uid,
+          email: userData.email,
+          password: '123456', // Contraseña por defecto
+          displayName: `${userData.nombre} ${userData.apellido}`,
+          emailVerified: true
+        });
+        console.log(`  ✓ ${userData.nombre} ${userData.apellido} (${userData.role}) - Firestore & Auth OK`);
+      } catch (error) {
+        if (error.code === 'auth/email-already-exists') {
+          // Si ya existe, intentamos actualizar la contraseña por si acaso, o simplemente lo logueamos
+          console.log(`  ✓ ${userData.nombre} ${userData.apellido} (${userData.role}) - Firestore OK (Auth ya existía)`);
+        } else {
+          console.error(`  ⚠️ Error creando Auth para ${userData.email}:`, error.message);
+        }
+      }
     }
     console.log('✅ Usuarios creados\n');
 

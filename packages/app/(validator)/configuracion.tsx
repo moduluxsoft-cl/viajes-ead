@@ -120,14 +120,6 @@ export default function ConfiguracionScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <EadLogo width={40}/>
-                <View>
-                    <Text style={styles.title}>Configuraciones Viaje</Text>
-                    <Text style={styles.subtitle}>Parámetros del próximo viaje disponible.</Text>
-                </View>
-                <PucvLogo width={40} height={42}/>
-            </View>
             <ScrollView>
                 <View style={styles.innerDiv}>
                     {activeTrip && (

@@ -157,16 +157,6 @@ export default function ReporteriaScreen() {
 
     const renderReporteItem = ({ item }: { item: AuditoriaViaje }) => (
         <Card style={styles.reporteCard}>
-            <View style={styles.reporteHeader}>
-                <View style={styles.estudianteInfo}>
-                    <Text style={styles.nombreEstudiante}>{item.nombreCompleto}</Text>
-                    <Text style={styles.rutEstudiante}>RUT: {item.rut}</Text>
-                </View>
-                {item.esAnomalia && (
-                    <IoWarning size={24} color="#f59e0b" />
-                )}
-            </View>
-
             <View style={styles.reporteDetails}>
                 <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Viaje:</Text>

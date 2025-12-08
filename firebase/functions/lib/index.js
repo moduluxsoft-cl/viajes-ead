@@ -1,16 +1,22 @@
-import { setGlobalOptions } from "firebase-functions";
-import { onSchedule } from "firebase-functions/scheduler";
-import { initializeApp } from "firebase-admin/app";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
-import { HttpsError, onCall } from "firebase-functions/v2/https";
-import { getAuth } from "firebase-admin/auth";
-import nodemailer from 'nodemailer';
-import QRCode from "qrcode";
-setGlobalOptions({ maxInstances: 10 });
-initializeApp({
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.consolidarAuditoriaViajes = exports.deleteUser = exports.deleteInactiveTravelsAndPasesWeekly = exports.updateTravelDateWeekly = exports.enviarCorreoConQR = void 0;
+const firebase_functions_1 = require("firebase-functions");
+const scheduler_1 = require("firebase-functions/scheduler");
+const app_1 = require("firebase-admin/app");
+const firestore_1 = require("firebase-admin/firestore");
+const https_1 = require("firebase-functions/v2/https");
+const auth_1 = require("firebase-admin/auth");
+const nodemailer_1 = __importDefault(require("nodemailer"));
+const qrcode_1 = __importDefault(require("qrcode"));
+(0, firebase_functions_1.setGlobalOptions)({ maxInstances: 10 });
+(0, app_1.initializeApp)({
     projectId: 'viajes-ead'
 });
-const db = getFirestore();
+const db = (0, firestore_1.getFirestore)();
 // Configuración de OAuth2
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -33,21 +39,21 @@ async function sendMailWithRetry(transporter, mailOptions, maxRetries = 4) {
         }
     }
 }
-export const enviarCorreoConQR = onCall(async (request) => {
+exports.enviarCorreoConQR = (0, https_1.onCall)(async (request) => {
     if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Se requiere autenticación para realizar esta acción.");
+        throw new https_1.HttpsError("unauthenticated", "Se requiere autenticación para realizar esta acción.");
     }
     if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN || !USER_EMAIL) {
         console.error("No se han configurado las credenciales de Gmail.");
-        throw new HttpsError("internal", "El servidor no está configurado para enviar correos.");
+        throw new https_1.HttpsError("internal", "El servidor no está configurado para enviar correos.");
     }
     try {
         const { email, contenidoQR } = request.data;
         if (!email || !contenidoQR) {
-            throw new HttpsError("invalid-argument", "Se necesita un email y un contenidoQR para enviar el correo.");
+            throw new https_1.HttpsError("invalid-argument", "Se necesita un email y un contenidoQR para enviar el correo.");
         }
         // QR pequeño para adjunto liviano
-        const qrDataUrl = await QRCode.toDataURL(contenidoQR, { margin: 1, width: 250 });
+        const qrDataUrl = await qrcode_1.default.toDataURL(contenidoQR, { margin: 1, width: 250 });
         const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, "");
         const htmlTemplate = `
             <!DOCTYPE html>
@@ -122,7 +128,7 @@ export const enviarCorreoConQR = onCall(async (request) => {
             ],
         };
         // Transporte SMTP explícito (sin pasar accessToken; Nodemailer gestiona xoauth2)
-        const transporter = nodemailer.createTransport({
+        const transporter = nodemailer_1.default.createTransport({
             host: "smtp.gmail.com",
             port: 465,
             secure: true,
@@ -144,12 +150,12 @@ export const enviarCorreoConQR = onCall(async (request) => {
     }
     catch (error) {
         console.error("Error al procesar y enviar el email con QR:", error);
-        if (error instanceof HttpsError)
+        if (error instanceof https_1.HttpsError)
             throw error;
-        throw new HttpsError("internal", "Ocurrió un error inesperado al enviar el correo.");
+        throw new https_1.HttpsError("internal", "Ocurrió un error inesperado al enviar el correo.");
     }
 });
-export const updateTravelDateWeekly = onSchedule({
+exports.updateTravelDateWeekly = (0, scheduler_1.onSchedule)({
     schedule: '0 23 * * 3',
     timeZone: 'America/Santiago',
 }, async (event) => {
@@ -160,7 +166,7 @@ export const updateTravelDateWeekly = onSchedule({
         console.error('Error actualizando documentos:', error);
     });
 });
-export const deleteInactiveTravelsAndPasesWeekly = onSchedule({
+exports.deleteInactiveTravelsAndPasesWeekly = (0, scheduler_1.onSchedule)({
     schedule: '10 23 * * 3',
     timeZone: 'America/Santiago',
 }, async (event) => {
@@ -172,7 +178,7 @@ export const deleteInactiveTravelsAndPasesWeekly = onSchedule({
     });
 });
 async function updateTravelDate(callerName) {
-    const db = getFirestore();
+    const db = (0, firestore_1.getFirestore)();
     const propertiesCollection = db.collection('viajes');
     const querySnapshot = await propertiesCollection.where('STATE', '==', 'ABIERTO').get();
     if (querySnapshot.empty) {
@@ -222,7 +228,7 @@ async function updateTravelDate(callerName) {
     }
 }
 async function deleteInactiveTravelsAndPases() {
-    const db = getFirestore();
+    const db = (0, firestore_1.getFirestore)();
     const travelsCollection = db.collection('viajes');
     try {
         // Obtener todos los documentos de la colección "viajes"
@@ -297,18 +303,18 @@ async function deleteInactiveTravelsAndPases() {
  * Solo puede ser llamada por un usuario autenticado con el rol de 'admin'.
  * Se invoca desde la app con httpsCallable.
  */
-export const deleteUser = onCall({ region: "us-central1" }, async (request) => {
+exports.deleteUser = (0, https_1.onCall)({ region: "us-central1" }, async (request) => {
     if (request.auth?.token.role !== "admin") {
-        throw new HttpsError("permission-denied", "Solo los administradores pueden eliminar usuarios.");
+        throw new https_1.HttpsError("permission-denied", "Solo los administradores pueden eliminar usuarios.");
     }
     // Los datos enviados desde la app están en request.data
     const uid = request.data.uid;
     if (!uid) {
-        throw new HttpsError("invalid-argument", "El UID del usuario es requerido.");
+        throw new https_1.HttpsError("invalid-argument", "El UID del usuario es requerido.");
     }
     try {
         // 2. Eliminar el usuario de Firebase Authentication
-        await getAuth().deleteUser(uid);
+        await (0, auth_1.getAuth)().deleteUser(uid);
         // 3. Eliminar el documento del usuario en Firestore
         await db.collection("users").doc(uid).delete();
         console.log(`Usuario ${uid} eliminado exitosamente por ${request.auth?.uid}`);
@@ -316,29 +322,29 @@ export const deleteUser = onCall({ region: "us-central1" }, async (request) => {
     }
     catch (error) {
         console.error("Error al eliminar usuario:", error);
-        if (error instanceof HttpsError) {
+        if (error instanceof https_1.HttpsError) {
             throw error;
         }
         if (error instanceof Error) {
-            throw new HttpsError("internal", error.message);
+            throw new https_1.HttpsError("internal", error.message);
         }
-        throw new HttpsError("internal", "Ocurrió un error inesperado al eliminar el usuario.");
+        throw new https_1.HttpsError("internal", "Ocurrió un error inesperado al eliminar el usuario.");
     }
 });
-export const consolidarAuditoriaViajes = onSchedule({
+exports.consolidarAuditoriaViajes = (0, scheduler_1.onSchedule)({
     schedule: '0 20 * * *',
     timeZone: 'America/Santiago',
 }, async (event) => {
     console.log("Iniciando consolidación de auditoría de viajes");
-    const db = getFirestore();
+    const db = (0, firestore_1.getFirestore)();
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-    const hoySinHora = Timestamp.fromDate(hoy);
+    const hoySinHora = firestore_1.Timestamp.fromDate(hoy);
     try {
         const viajesSnapshot = await db
             .collection('viajes')
             .where('DATE_TRAVEL', '>=', hoySinHora)
-            .where('DATE_TRAVEL', '<', Timestamp.fromDate(new Date(hoy.getTime() + 24 * 60 * 60 * 1000)))
+            .where('DATE_TRAVEL', '<', firestore_1.Timestamp.fromDate(new Date(hoy.getTime() + 24 * 60 * 60 * 1000)))
             .where('STATE', '==', 'CERRADO')
             .get();
         if (viajesSnapshot.empty) {
@@ -360,7 +366,7 @@ export const consolidarAuditoriaViajes = onSchedule({
                 const data = doc.data();
                 const updateData = {
                     consolidado: true,
-                    fechaConsolidacion: Timestamp.now()
+                    fechaConsolidacion: firestore_1.Timestamp.now()
                 };
                 const tieneIda = data.validacionIda?.validado === true;
                 const tieneVuelta = data.validacionVuelta?.validado === true;
@@ -402,7 +408,7 @@ export const consolidarAuditoriaViajes = onSchedule({
     }
 });
 async function registrarPasesSinUso(viajeId, viajeData) {
-    const db = getFirestore();
+    const db = (0, firestore_1.getFirestore)();
     const pasesSnapshot = await db
         .collection('pases')
         .where('viajeId', '==', viajeId)
@@ -459,7 +465,7 @@ async function registrarPasesSinUso(viajeId, viajeData) {
                     esAnomalia: true,
                     motivoAnomalia: 'QR generado pero no utilizado',
                     consolidado: true,
-                    fechaConsolidacion: Timestamp.now()
+                    fechaConsolidacion: firestore_1.Timestamp.now()
                 });
                 registrosCreados++;
             }
@@ -471,7 +477,7 @@ async function registrarPasesSinUso(viajeId, viajeData) {
     }
 }
 async function actualizarEstadisticasViaje(viajeId) {
-    const db = getFirestore();
+    const db = (0, firestore_1.getFirestore)();
     const auditoriaSnapshot = await db
         .collection('auditoria_viajes')
         .where('viajeId', '==', viajeId)
@@ -507,7 +513,7 @@ async function actualizarEstadisticasViaje(viajeId) {
             totalSinUso,
             porcentajeOK: auditoriaSnapshot.size > 0 ?
                 (totalOK / auditoriaSnapshot.size * 100).toFixed(2) : 0,
-            fechaUltimaConsolidacion: Timestamp.now()
+            fechaUltimaConsolidacion: firestore_1.Timestamp.now()
         }
     });
     console.log(`Estadísticas actualizadas para viaje ${viajeId}`);

@@ -88,7 +88,6 @@ export default function ValidatorLayout() {
                         header: () => (
                             <AdminHeader
                                 title="Configuraciones Viaje"
-                                subtitle="Parámetros del próximo viaje disponible."
                             />
                         ),
                     }}

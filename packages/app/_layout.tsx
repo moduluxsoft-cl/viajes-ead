@@ -7,7 +7,7 @@ import {ToastContainer} from 'react-toastify';
 
 export default function RootLayout() {
     return (
-        <>
+        <React.Fragment>
             <AuthProvider>
                 <StatusBar style="auto" />
                 <Stack
@@ -23,6 +23,6 @@ export default function RootLayout() {
                 </Stack>
             </AuthProvider>
             <ToastContainer />
-        </>
+        </React.Fragment>
     );
 }

@@ -132,28 +132,38 @@ export const validarPaseConteo = async (
 
     try {
         const resultado = await runTransaction(db, async (transaction) => {
-            // 1. Obtener Pase
             const paseDoc = await transaction.get(paseRef);
             if (!paseDoc.exists()) throw new Error("Pase no encontrado.");
 
             const paseData = paseDoc.data() as Omit<Pase, 'id' | 'fechaCreacion'> & { fechaCreacion: Timestamp };
 
-            // 2. Obtener Viaje para validar
             const viajeRef = doc(db, 'viajes', paseData.viajeId);
             const viajeDoc = await transaction.get(viajeRef);
             if (!viajeDoc.exists()) throw new Error("Viaje asociado no encontrado.");
 
+            let auditoriaDoc = null;
+            let userDoc = null;
+            const auditoriaId = `${paseData.viajeId}_${paseData.estudianteId}`;
+            const auditoriaRef = doc(db, 'auditoria_viajes', auditoriaId);
+
+            if (validadorData) {
+                auditoriaDoc = await transaction.get(auditoriaRef);
+
+                if (!auditoriaDoc.exists()) {
+                    const userRef = doc(db, 'users', paseData.estudianteId);
+                    userDoc = await transaction.get(userRef);
+                }
+            }
+
             const viajeData = viajeDoc.data();
 
-            // Validar Estado del Viaje
+
             if (viajeData.STATE !== 'ABIERTO') {
                 throw new Error("El viaje no está abierto para validaciones.");
             }
 
-            // Validar Fecha del Viaje (Debe ser HOY)
             const fechaViaje = viajeData.DATE_TRAVEL.toDate();
             const hoy = new Date();
-            // Comparar solo año, mes y día
             const esHoy = fechaViaje.getDate() === hoy.getDate() &&
                 fechaViaje.getMonth() === hoy.getMonth() &&
                 fechaViaje.getFullYear() === hoy.getFullYear();
@@ -162,7 +172,6 @@ export const validarPaseConteo = async (
                 throw new Error("Este pase no corresponde a la fecha del viaje de hoy.");
             }
 
-            // Validar Límite de Escaneos
             if ((paseData.scanCount || 0) >= 2) throw new Error("Este pase ya ha alcanzado el límite de 2 escaneos.");
 
             const nuevoScanCount = (paseData.scanCount || 0) + 1;
@@ -179,17 +188,8 @@ export const validarPaseConteo = async (
                 tipoValidacion = 'VUELTA';
             }
 
-            // 3. Actualizar Pase
             transaction.update(paseRef, { estado: nuevoEstado, scanCount: increment(1) });
-
-            // 4. Actualizar Auditoría (Atomicamente)
             if (validadorData) {
-                const estudianteId = paseData.estudianteId;
-                const viajeId = paseData.viajeId;
-                const auditoriaId = `${viajeId}_${estudianteId}`;
-                const auditoriaRef = doc(db, 'auditoria_viajes', auditoriaId);
-                const auditoriaDoc = await transaction.get(auditoriaRef);
-
                 const horaValidacion = new Date();
                 const validacionInfo = {
                     validado: true,
@@ -198,7 +198,7 @@ export const validarPaseConteo = async (
                     validadorNombre: `${validadorData.nombre} ${validadorData.apellido}`
                 };
 
-                if (auditoriaDoc.exists()) {
+                if (auditoriaDoc && auditoriaDoc.exists()) {
                     const currentAudit = auditoriaDoc.data();
                     const updateData: any = {};
 
@@ -227,22 +227,16 @@ export const validarPaseConteo = async (
 
                     transaction.update(auditoriaRef, updateData);
                 } else {
-                    // Obtener datos del estudiante para el registro inicial (si no existe auditoría)
-                    // Nota: Idealmente deberíamos leer el usuario también, pero para eficiencia
-                    // usaremos los datos que tenemos en el pase si es posible, o haremos un get extra.
-                    // El pase tiene nombreCompleto y rut.
-                    // Para email y carrera necesitamos el user doc.
-                    const userRef = doc(db, 'users', estudianteId);
-                    const userDoc = await transaction.get(userRef);
-                    const userData = userDoc.exists() ? userDoc.data() : {};
+
+                    const userData = userDoc && userDoc.exists() ? userDoc.data() : {};
 
                     const nuevoRegistro: AuditoriaViaje = {
-                        viajeId,
+                        viajeId: paseData.viajeId,
                         fechaViaje: viajeData.DATE_TRAVEL.toDate(),
                         destino: viajeData.DESTINATION,
                         tripNumber: viajeData.TRIP_NUMBER,
 
-                        estudianteId,
+                        estudianteId: paseData.estudianteId,
                         nombreCompleto: paseData.nombreCompleto,
                         rut: paseData.rut,
                         email: userData.email || '',

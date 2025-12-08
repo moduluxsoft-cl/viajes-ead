@@ -157,6 +157,15 @@ export default function ReporteriaScreen() {
 
     const renderReporteItem = ({ item }: { item: AuditoriaViaje }) => (
         <Card style={styles.reporteCard}>
+            <View style={styles.reporteHeader}>
+                <View style={styles.estudianteInfo}>
+                    <Text style={styles.nombreEstudiante}>{item.nombreCompleto}</Text>
+                    <Text style={styles.rutEstudiante}>RUT: {item.rut}</Text>
+                </View>
+                {item.esAnomalia && (
+                    <IoWarning size={24} color="#f59e0b" />
+                )}
+            </View>
             <View style={styles.reporteDetails}>
                 <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Viaje:</Text>
@@ -250,7 +259,6 @@ export default function ReporteriaScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Reportería de Auditoría</Text>
                 <View style={styles.statsContainer}>
                     <View style={styles.statCard}>
                         <Text style={styles.statValue}>{estadisticas.total}</Text>
@@ -313,7 +321,7 @@ export default function ReporteriaScreen() {
 
                 <View style={styles.filterRow}>
                     {Platform.OS === 'web' ? (
-                        <>
+                        <View style={styles.dateContainer}>
                             <View style={styles.dateInputContainer}>
                                 <Text style={styles.dateLabel}>Desde:</Text>
                                 <input
@@ -346,7 +354,7 @@ export default function ReporteriaScreen() {
                                     }}
                                 />
                             </View>
-                        </>
+                        </View>
                     ) : (
                         <>
                             <View style={styles.dateButton}>
@@ -402,13 +410,10 @@ export default function ReporteriaScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f9fafb',
+        backgroundColor: '#E4E4E4FF',
     },
     header: {
-        backgroundColor: '#fff',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
+        padding: 10,
     },
     title: {
         fontSize: 24,
@@ -423,37 +428,38 @@ const styles = StyleSheet.create({
     },
     statCard: {
         flex: 1,
-        backgroundColor: '#f3f4f6',
+        backgroundColor: '#3333d3',
         padding: 12,
         borderRadius: 8,
         alignItems: 'center',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4,
+        elevation: 2,
     },
     statCardOk: {
-        backgroundColor: '#d1fae5',
+        backgroundColor: '#1c9848',
     },
     statCardAnomalia: {
-        backgroundColor: '#fed7aa',
+        backgroundColor: '#BE031E',
     },
     statValue: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#111827',
+        color: '#efefef',
     },
     statLabel: {
         fontSize: 12,
-        color: '#6b7280',
+        color: '#e4e4e4',
         marginTop: 4,
     },
     statPercent: {
         fontSize: 10,
-        color: '#4b5563',
+        color: '#d6d6d6',
         marginTop: 2,
     },
     filtersContainer: {
-        backgroundColor: '#fff',
         padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4,
+        elevation: 10,
     },
     searchContainer: {
         marginBottom: 12,
@@ -501,6 +507,8 @@ const styles = StyleSheet.create({
     exportButton: {
         flex: 1,
         backgroundColor: '#10b981',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4,
+        elevation: 1,
     },
     dateButton: {
         flex: 1,
@@ -515,11 +523,14 @@ const styles = StyleSheet.create({
         color: '#374151',
         textAlign: 'center',
     },
-    dateInputContainer: {
+    dateContainer: {
         flex: 1,
         flexDirection: 'row',
+    },
+    dateInputContainer: {
+        flex: 1,
+        flexDirection: 'column',
         alignItems: 'center',
-        gap: 8,
     },
     dateLabel: {
         fontSize: 12,
@@ -534,6 +545,7 @@ const styles = StyleSheet.create({
     },
     picker: {
         height: 44,
+        borderColor: '#d1d5db',
     },
     listContainer: {
         padding: 16,

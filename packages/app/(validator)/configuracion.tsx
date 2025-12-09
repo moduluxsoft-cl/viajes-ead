@@ -10,8 +10,6 @@ import {
     sobrescribirViajeActivo,
     Viaje
 } from '@shared/services/viajesService';
-import {EadLogo} from "@assets/icons/ead-logo";
-import PucvLogo from "@assets/icons/pucv-logo";
 import {toast} from "react-toastify";
 import {IoInformationCircle} from "react-icons/io5";
 
@@ -120,14 +118,6 @@ export default function ConfiguracionScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <EadLogo width={40}/>
-                <View>
-                    <Text style={styles.title}>Configuraciones Viaje</Text>
-                    <Text style={styles.subtitle}>Parámetros del próximo viaje disponible.</Text>
-                </View>
-                <PucvLogo width={40} height={42}/>
-            </View>
             <ScrollView>
                 <View style={styles.innerDiv}>
                     {activeTrip && (
@@ -227,16 +217,8 @@ export default function ConfiguracionScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#EAEAEA' },
+    container: { flex: 1, backgroundColor: '#E4E4E4FF' },
     innerDiv: { padding: 20 },
-    header: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#ffffff',
-    },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
@@ -266,7 +248,9 @@ const styles = StyleSheet.create({
         color: '#111827'
     },
     saveButton: {
-        backgroundColor: '#BE031E'
+        backgroundColor: '#BE031E',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4,
+        elevation: 2,
     },
     errorText: {
         textAlign: 'center',

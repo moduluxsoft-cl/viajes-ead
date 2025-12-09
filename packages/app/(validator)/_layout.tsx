@@ -5,6 +5,7 @@ import {IoPeople, IoScan, IoSettings, IoDocumentText} from "react-icons/io5";
 import {useAuth} from "@shared/contexts/AuthContext";
 import {LoadingSpinner} from "@shared/components/ui/LoadingSpinner";
 import {LogoutButton} from '@shared/components/ui/LogoutButton';
+import {AdminHeader} from "@shared/components/ui/AdminHeader";
 
 export default function ValidatorLayout() {
     const { loading, userData } = useAuth();
@@ -19,19 +20,18 @@ export default function ValidatorLayout() {
 
     if (userData.role === 'validator') {
         return (
-            <Stack>
-                <Stack.Screen
-                    name="scanner"
-                    options={{
-                        title: '',
-                        headerShown: true,
-                        headerStyle: { backgroundColor: '#FFFFFF' },
-                        headerTintColor: '#2B2B2B',
-                        headerTitleAlign: 'center',
-                        headerShadowVisible: false,
-                        headerRight: () => <LogoutButton />,
-                    }}
-                />
+            <Stack
+                screenOptions={{
+                    headerShown: true,
+                    header: () => (
+                        <AdminHeader
+                            title="Validador de Pases"
+                            subtitle={`Hola ${userData.nombre} ${userData.apellido}!`}
+                        />
+                    ),
+                }}
+            >
+                <Stack.Screen name="scanner" />
                 <Stack.Screen name="users" options={{ headerShown: false }} />
                 <Stack.Screen name="configuracion" options={{ headerShown: false }} />
             </Stack>
@@ -45,11 +45,6 @@ export default function ValidatorLayout() {
                     tabBarActiveTintColor: '#BE031E',
                     tabBarInactiveTintColor: '#9ca3af',
                     headerShown: true,
-                    headerStyle: { backgroundColor: '#FFFFFF' },
-                    headerTintColor: '#2B2B2B',
-                    headerTitleAlign: 'center',
-                    headerShadowVisible: false,
-                    headerRight: () => <LogoutButton />,
                     tabBarStyle: {
                         height: 60,
                         paddingBottom: 5,
@@ -63,6 +58,12 @@ export default function ValidatorLayout() {
                         tabBarIcon: ({ color, size }) => (
                             <IoScan color={color} size={size} />
                         ),
+                        header: () => (
+                            <AdminHeader
+                                title="Validador de Pases"
+                                subtitle={`Hola ${userData.nombre} ${userData.apellido}!`}
+                            />
+                        ),
                     }}
                 />
                 <Tabs.Screen
@@ -71,6 +72,9 @@ export default function ValidatorLayout() {
                         title: 'Usuarios',
                         tabBarIcon: ({ color, size }) => (
                             <IoPeople color={color} size={size} />
+                        ),
+                        header: () => (
+                            <AdminHeader title="Gestión de Usuarios" />
                         ),
                     }}
                 />
@@ -81,6 +85,11 @@ export default function ValidatorLayout() {
                         tabBarIcon: ({ color, size }) => (
                             <IoSettings color={color} size={size} />
                         ),
+                        header: () => (
+                            <AdminHeader
+                                title="Configuraciones Viaje"
+                            />
+                        ),
                     }}
                 />
                 <Tabs.Screen
@@ -90,9 +99,12 @@ export default function ValidatorLayout() {
                         tabBarIcon: ({ color, size }) => (
                             <IoDocumentText color={color} size={size} />
                         ),
+                        header: () => (
+                            <AdminHeader title="Reportería de Auditoría" />
+                        ),
                     }}
                 />
             </Tabs>
-        )
+        );
     }
 }

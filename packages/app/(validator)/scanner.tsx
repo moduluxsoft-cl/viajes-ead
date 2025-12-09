@@ -1,13 +1,11 @@
 // app/(validator)/scanner.tsx
 import React, {useState} from 'react';
-import {SafeAreaView, StyleSheet, Text, View} from 'react-native';
+import {SafeAreaView, StyleSheet, View} from 'react-native';
 import {QRScanner} from '@shared/components/QRScanner';
 import {ResultModal} from '@shared/components/ResultModal';
 import {useAuth} from '@shared/contexts/AuthContext';
 import {decryptQRData, QRData} from '@shared/services/encryption';
 import {obtenerDetallesCompletosPase, Pase, validarPaseConteo, Viaje} from '@shared/services/viajesService';
-import {EadLogo} from "@assets/icons/ead-logo";
-import PucvLogo from "@assets/icons/pucv-logo";
 
 export default function ScannerScreen() {
     const { userData } = useAuth();
@@ -95,15 +93,6 @@ export default function ScannerScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <EadLogo width={40}/>
-                <View>
-                    <Text style={styles.title}>Validador de Pases</Text>
-                    <Text style={styles.subtitle}>Hola {userData?.nombre} {userData?.apellido}!</Text>
-                </View>
-                <PucvLogo width={40} height={42}/>
-            </View>
-
             <View style={styles.scannerContainer}>
                 <QRScanner
                     onQRScanned={handleQRScanned}
@@ -125,14 +114,7 @@ export default function ScannerScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
-    header: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        backgroundColor: '#E4E4E4FF',
     },
     title: {
         fontSize: 20,

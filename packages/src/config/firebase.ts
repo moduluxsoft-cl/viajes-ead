@@ -32,7 +32,7 @@ const functions = compatApp.functions();
 // ---- EMULADORES ----
 // TEMPORAL: Forzar uso de emulators para desarrollo local
 // Lee de variables de entorno, con fallback a TRUE para desarrollo
-const useEmulators = process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATORS === 'true' || true;
+const useEmulators = process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATORS === 'true' || false;
 
 // Debug: Mostrar estado de variables de entorno
 console.log('🔍 DEBUG - Variables de entorno:');

@@ -37,8 +37,6 @@ import {
 } from '@shared/services/usersService';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import {EadLogo} from "@assets/icons/ead-logo";
-import PucvLogo from "@assets/icons/pucv-logo";
 import {Id, toast} from "react-toastify";
 
 // --- TIPO PARA MANEJAR ACCIONES ---
@@ -481,11 +479,6 @@ export default function UsersScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <EadLogo width={40}/>
-                <Text style={styles.title}>Gestión de Usuarios</Text>
-                <PucvLogo width={40} height={42}/>
-            </View>
             <View style={styles.controlsContainer}>
                 <TextInput style={styles.searchInput} placeholder="Buscar por nombre, RUT o email..." value={searchQuery} onChangeText={setSearchQuery} />
                 <Button title="Añadir" onPress={() => handleOpenEditModal()} style={styles.addButton} textStyle={{ fontSize: 14 }} />
@@ -585,15 +578,7 @@ export default function UsersScreen() {
 
 // --- ESTILOS (SIN CAMBIOS) ---
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#EAEAEA' },
-    header: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#ffffff',
-    },
+    container: { flex: 1, backgroundColor: '#E4E4E4FF' },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
@@ -603,8 +588,18 @@ const styles = StyleSheet.create({
     },
     controlsContainer: { flexDirection: 'row', alignItems: 'center', padding: 10, gap: 8, marginBottom: 10, backgroundColor: '#FFFFFF' },
     searchInput: { flex: 1, backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, borderWidth: 1, borderColor: '#d1d5db' },
-    addButton: { paddingHorizontal: 12, backgroundColor: '#BE031E'},
-    csvButton: { paddingHorizontal: 12, backgroundColor: '#BE031E'},
+    addButton: {
+        paddingHorizontal: 12,
+        backgroundColor: '#10b981',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4,
+        elevation: 2,
+    },
+    csvButton: {
+        paddingHorizontal: 12,
+        backgroundColor: '#10b981',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4,
+        elevation: 2,
+    },
     listContainer: { paddingHorizontal: 16, paddingBottom: 16 },
     userCard: { marginBottom: 12, backgroundColor: '#ffffff' },
     userHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
@@ -637,15 +632,12 @@ const styles = StyleSheet.create({
     modalButton: { borderRadius: 10, paddingVertical: 12, paddingHorizontal: 20, elevation: 2, flex: 1, marginHorizontal: 8 },
     buttonCancel: { backgroundColor: '#6b7280' },
     buttonConfirm: { backgroundColor: '#10b981' },
-    buttonDelete: { backgroundColor: '#ef4444' },
+    buttonDelete: { backgroundColor: '#BE031E' },
     buttonText: { color: 'white', fontWeight: 'bold', textAlign: 'center', fontSize: 16 },
     modalTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
     csvSectionContainer: {
         paddingHorizontal: 16,
         paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
-        backgroundColor: '##f3f4f6',
         marginBottom: 8,
     },
     csvSectionTitle: {
@@ -664,7 +656,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     deleteCsvButton: {
-        backgroundColor: '#dc2626',
+        backgroundColor: '#BE031E',
     },
     deleteCsvHintText: {
         fontSize: 12,

@@ -161,7 +161,7 @@ export default function StudentHomeScreen() {
 
 // Los estilos permanecen mayormente iguales, solo eliminamos los que no se usan.
 const styles = StyleSheet.create({
-    gradient: { flex: 1, backgroundColor: '#FFF7F8' },
+    gradient: { flex: 1, backgroundColor: '#E4E4E4FF' },
     container: { flex: 1 },
     scrollContent: { padding: 16, flexGrow: 1 },
     // Se eliminan los estilos 'header', 'welcomeText' y 'logoutButton'

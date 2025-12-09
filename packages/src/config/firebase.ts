@@ -2,6 +2,7 @@
 import {initializeApp} from "firebase/app";
 import {connectFirestoreEmulator, getFirestore} from 'firebase/firestore';
 import {connectAuthEmulator, getAuth} from 'firebase/auth';
+import Constants from 'expo-constants';
 
 // Usamos compat SOLO para Functions, para poder usar useEmulator sin pelear con los types
 import 'firebase/compat/functions';
@@ -19,34 +20,30 @@ export const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Functions vía compat (usa la misma app debajo)
 const compatApp = firebaseCompat.apps.length
     ? firebaseCompat.app()
     : firebaseCompat.initializeApp(firebaseConfig);
 const functions = compatApp.functions();
 
 // ---- EMULADORES ----
-// TEMPORAL: Forzar uso de emulators para desarrollo local
-// Lee de variables de entorno, con fallback a TRUE para desarrollo
-const useEmulators = process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATORS === 'true' || false;
+const useEmulators = Constants.expoConfig?.extra?.useFirebaseEmulators === 'true' || false;
 
 // Debug: Mostrar estado de variables de entorno
 console.log('🔍 DEBUG - Variables de entorno:');
-console.log('  EXPO_PUBLIC_USE_FIREBASE_EMULATORS:', process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATORS);
+console.log('  EXPO_PUBLIC_USE_FIREBASE_EMULATORS:', Constants.expoConfig?.extra?.useFirebaseEmulators);
 console.log('  useEmulators (resultado):', useEmulators);
 
 if (useEmulators) {
     // Determina el host: usa variable de entorno, o 'localhost' por defecto
-    const host = process.env.EXPO_PUBLIC_FIREBASE_EMULATOR_HOST || 'localhost';
+    const host = Constants.expoConfig?.extra?.firebaseEmulatorHost || 'localhost';
 
     // Lee los puertos desde variables de entorno con valores por defecto
-    const firestorePort = Number(process.env.EXPO_PUBLIC_FIRESTORE_EMULATOR_PORT ?? '8080');
-    const authPort = Number(process.env.EXPO_PUBLIC_AUTH_EMULATOR_PORT ?? '9099');
-    const functionsPort = Number(process.env.EXPO_PUBLIC_FUNCTIONS_EMULATOR_PORT ?? '5001');
+    const firestorePort = Number(Constants.expoConfig?.extra?.firestoreEmulatorPort ?? '8080');
+    const authPort = Number(Constants.expoConfig?.extra?.authEmulatorPort ?? '9099');
+    const functionsPort = Number(Constants.expoConfig?.extra?.functionsEmulatorPort ?? '5001');
 
     console.log(`🔧 Conectando a Firebase Emulators en ${host}`);
     console.log(`  - Firestore: ${host}:${firestorePort}`);

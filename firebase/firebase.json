@@ -1,0 +1,30 @@
+{
+  "hosting": {
+    "public": "hosting/public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=31536000,immutable" }]
+      },
+      {
+        "source": "**/*",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ],
+    "rewrites": [
+      { "source": "**", "destination": "/index.html" }
+    ]
+  },
+  "functions": {
+    "source": "functions"
+  },
+  "emulators": {
+    "auth": { "port": 9099, "host": "0.0.0.0" },
+    "firestore": { "port": 8080, "host": "0.0.0.0" },
+    "pubsub": { "port": 8085, "host": "0.0.0.0" },
+    "ui": { "enabled": true, "port": 4000, "host": "0.0.0.0" },
+    "singleProjectMode": true,
+    "import": "emulator-data"
+  }
+}

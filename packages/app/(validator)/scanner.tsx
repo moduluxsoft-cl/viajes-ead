@@ -6,6 +6,7 @@ import {ResultModal} from '@shared/components/ResultModal';
 import {useAuth} from '@shared/contexts/AuthContext';
 import {decryptQRData, QRData} from '@shared/services/encryption';
 import {obtenerDetallesCompletosPase, Pase, validarPaseConteo, Viaje} from '@shared/services/viajesService';
+import Head from "expo-router/head";
 
 export default function ScannerScreen() {
     const { userData } = useAuth();
@@ -92,22 +93,27 @@ export default function ScannerScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.scannerContainer}>
-                <QRScanner
-                    onQRScanned={handleQRScanned}
-                    scanning={scanning}
-                    onToggleScanning={() => setScanning(!scanning)}
+        <React.Fragment>
+            <Head>
+                <title>Viajes EAD | Scanner</title>
+                <meta name="description" content="Escaner de QR" />
+            </Head>
+            <SafeAreaView style={styles.container}>
+                <View style={styles.scannerContainer}>
+                    <QRScanner
+                        onQRScanned={handleQRScanned}
+                        scanning={scanning}
+                        onToggleScanning={() => setScanning(!scanning)}
+                    />
+                </View>
+                <ResultModal
+                    visible={showResult}
+                    onClose={resetScanner}
+                    validating={validating}
+                    scanResult={scanResult}
                 />
-            </View>
-
-            <ResultModal
-                visible={showResult}
-                onClose={resetScanner}
-                validating={validating}
-                scanResult={scanResult}
-            />
-        </SafeAreaView>
+            </SafeAreaView>
+        </React.Fragment>
     );
 }
 

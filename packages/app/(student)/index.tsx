@@ -11,6 +11,7 @@ import {toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {getServerTimeFromHeader} from "@shared/services/utilsService";
 import {functions} from '@shared/config/firebase';
+import Head from "expo-router/head";
 
 export default function StudentHomeScreen() {
     const { userData, loading: authLoading } = useAuth();
@@ -48,9 +49,6 @@ export default function StudentHomeScreen() {
                 (diaSemana === 3 && hora >= 13) ||
                 (diaSemana === 4 && hora < 19)
             )
-            console.log("Server time:", serverUtc);
-            console.log(diaSemana);
-            console.log(hora);
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error inesperado.';
             setError(errorMessage);
@@ -77,10 +75,8 @@ export default function StudentHomeScreen() {
 
         await crearPase(userData, viajeActivo).then(async ({paseId, encryptedQRData}) => {
             await enviarCorreoConQR({email: userData.email, contenidoQR: encryptedQRData}).then(async (res) => {
-                console.log(res);
                 toast.success('¡Éxito! Tu pase se ha generado correctamente, se te ha enviado un correo con el QR adjunto.');
             }).catch(async (error) => {
-                console.log(error);
                 toast.success('¡Éxito! Tu pase se ha generado correctamente, pero hubo un error al enviar el QR adjunto. Puedes seguir ocupando el QR disponible aquí.');
             })
         }).catch(async (error) => {
@@ -96,66 +92,70 @@ export default function StudentHomeScreen() {
     }
 
     return (
-        <View style={styles.gradient}>
-            <SafeAreaView style={styles.container}>
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                >
-                    {/* El header con el saludo y el botón de logout se ha eliminado de aquí */}
+        <React.Fragment>
+            <Head>
+                <title>Viajes EAD | Pases</title>
+                <meta name="description" content="Sistema de Pases Escolares" />
+            </Head>
+            <View style={styles.gradient}>
+                <SafeAreaView style={styles.container}>
+                    <ScrollView
+                        contentContainerStyle={styles.scrollContent}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                    >
+                        {error && (
+                            <Card style={styles.warningCard}><Text style={styles.warningText}>{error}</Text></Card>
+                        )}
 
-                    {error && (
-                        <Card style={styles.warningCard}><Text style={styles.warningText}>{error}</Text></Card>
-                    )}
-
-                    {currentPase && viajeActivo ? (
-                        <Card style={styles.qrCard}>
-                            <Text style={styles.cardTitle}>Tu Pase Actual</Text>
-                            <QRGenerator data={currentPase.qrData} size={200} />
-                            <View style={styles.paseDetails}>
-                                <Text style={styles.detailLabel}>Destino:</Text>
-                                <Text style={styles.detailValue}>{viajeActivo.destino}</Text>
-                                <Text style={styles.detailLabel}>Fecha de Viaje:</Text>
-                                <Text style={styles.detailValue}>{viajeActivo.fechaViaje.toLocaleDateString('es-CL')}</Text>
-                            </View>
-                        </Card>
-                    ) : (
-                        viajeActivo && (
-                            <Card style={styles.emptyCard}>
-                                <Text style={styles.emptyTitle}>No tienes pase activo</Text>
-                                <Text style={styles.emptySubtitle}>Crea uno para generar tu código QR.</Text>
-                                {
-                                    isBlocked ? (
-                                    <View style={styles.blockedContainer}>
-                                        <Text style={styles.blockedMessage}>{generationBlockedMessage}</Text>
-                                    </View>
-                                ) : (
-                                    <Button
-                                        title={isCreatingPase ? "Generando..." : "Crear Nuevo Pase"}
-                                        onPress={handleCrearPase}
-                                        style={styles.createButton}
-                                        disabled={isCreatingPase}
-                                    />
-                                )}
+                        {currentPase && viajeActivo ? (
+                            <Card style={styles.qrCard}>
+                                <Text style={styles.cardTitle}>Tu Pase Actual</Text>
+                                <QRGenerator data={currentPase.qrData} size={200} />
+                                <View style={styles.paseDetails}>
+                                    <Text style={styles.detailLabel}>Destino:</Text>
+                                    <Text style={styles.detailValue}>{viajeActivo.destino}</Text>
+                                    <Text style={styles.detailLabel}>Fecha de Viaje:</Text>
+                                    <Text style={styles.detailValue}>{viajeActivo.fechaViaje.toLocaleDateString('es-CL')}</Text>
+                                </View>
                             </Card>
-                        )
-                    )}
+                        ) : (
+                            viajeActivo && (
+                                <Card style={styles.emptyCard}>
+                                    <Text style={styles.emptyTitle}>No tienes pase activo</Text>
+                                    <Text style={styles.emptySubtitle}>Crea uno para generar tu código QR.</Text>
+                                    {
+                                        isBlocked ? (
+                                            <View style={styles.blockedContainer}>
+                                                <Text style={styles.blockedMessage}>{generationBlockedMessage}</Text>
+                                            </View>
+                                        ) : (
+                                            <Button
+                                                title={isCreatingPase ? "Generando..." : "Crear Nuevo Pase"}
+                                                onPress={handleCrearPase}
+                                                style={styles.createButton}
+                                                disabled={isCreatingPase}
+                                            />
+                                        )}
+                                </Card>
+                            )
+                        )}
 
-                    {!viajeActivo && !loading && (
-                        <Card style={styles.emptyCard}>
-                            <Text style={styles.emptyTitle}>Viaje no disponible</Text>
-                            <Text style={styles.emptySubtitle}>El administrador aún no ha configurado el próximo viaje.</Text>
-                            <Button
-                                title="Creación de pases desactivada"
-                                style={styles.disabledButton}
-                                disabled={true}
-                                onPress={() => {}}
-                            />
-                        </Card>
-                    )}
-                </ScrollView>
-            </SafeAreaView>
-        </View>
+                        {!viajeActivo && !loading && (
+                            <Card style={styles.emptyCard}>
+                                <Text style={styles.emptyTitle}>Viaje no disponible</Text>
+                                <Text style={styles.emptySubtitle}>El administrador aún no ha configurado el próximo viaje.</Text>
+                                <Button
+                                    title="Creación de pases desactivada"
+                                    style={styles.disabledButton}
+                                    disabled={true}
+                                    onPress={() => {}}
+                                />
+                            </Card>
+                        )}
+                    </ScrollView>
+                </SafeAreaView>
+            </View>
+        </React.Fragment>
     );
 }
 

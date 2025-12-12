@@ -1,64 +1,62 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
-interface HeaderProps {
+import React from 'react';
+import {StyleSheet, Text, View} from 'react-native';
+import {EadLogo} from '@assets/icons/ead-logo';
+import PucvLogo from '@assets/icons/pucv-logo';
+import {LogoutButton} from './LogoutButton';
+
+interface AdminHeaderProps {
     title: string;
-    rightAction?: {
-        label: string;
-        onPress: () => void;
-    };
-    gradient?: boolean;
+    subtitle?: string;
 }
 
-export const Header: React.FC<HeaderProps> = ({ title, rightAction, gradient = true }) => {
-    const content = (
-        <>
-            <Text style={styles.title}>{title}</Text>
-            {rightAction && (
-                <TouchableOpacity onPress={rightAction.onPress}>
-                    <Text style={styles.actionText}>{rightAction.label}</Text>
-                </TouchableOpacity>
-            )}
-        </>
+export function Header({ title, subtitle }: AdminHeaderProps) {
+    return (
+        <View style={styles.header}>
+            <EadLogo width={40} />
+            <View style={styles.titleContainer}>
+                <Text style={styles.title}>{title}</Text>
+                {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+            </View>
+            <View style={styles.rightSection}>
+                <PucvLogo width={40} height={42} />
+                <LogoutButton />
+            </View>
+        </View>
     );
-
-    if (gradient) {
-        return (
-            <LinearGradient
-                colors={['#667eea', '#764ba2']}
-                style={styles.container}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-            >
-                {content}
-            </LinearGradient>
-        );
-    }
-
-    return <View style={[styles.container, styles.solidHeader]}>{content}</View>;
-};
+}
 
 const styles = StyleSheet.create({
-    container: {
+    header: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        paddingTop: 56,
+        backgroundColor: '#ffffff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
     },
-    solidHeader: {
-        backgroundColor: '#667eea',
+    titleContainer: {
+        flex: 1,
+        marginHorizontal: 12,
     },
     title: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 'bold',
-        color: '#fff',
+        color: '#2B2B2B',
+        textAlign: 'center',
+        paddingBottom: 1,
     },
-    actionText: {
-        color: '#fff',
+    subtitle: {
         fontSize: 16,
-        fontWeight: '500',
+        color: '#2B2B2B',
+        textAlign: 'center',
+        opacity: 0.9,
+    },
+    rightSection: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
     },
 });

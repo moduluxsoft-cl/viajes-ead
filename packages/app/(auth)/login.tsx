@@ -19,7 +19,8 @@ import {enviarEmailRecuperacion} from '@shared/services/usersService';
 import {useLocalSearchParams} from "expo-router";
 import {EadLogo} from "@assets/icons/ead-logo";
 import PucvLogo from "@assets/icons/pucv-logo";
-import {toast} from "react-toastify"; // Importamos la función
+import {toast} from "react-toastify";
+import Head from "expo-router/head"; // Importamos la función
 
 export default function LoginScreen() {
     const { login } = useAuth();
@@ -122,134 +123,140 @@ export default function LoginScreen() {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#FFF7F8' }}>
-            <SafeAreaView style={styles.container}>
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.keyboardView}
-                >
-                    <ScrollView
-                        contentContainerStyle={styles.scrollContent}
-                        keyboardShouldPersistTaps="handled"
+        <React.Fragment>
+            <Head>
+                <title>Viajes EAD | Login</title>
+                <meta name="description" content="Sistema de Pases Escolares" />
+            </Head>
+            <View style={{ flex: 1, backgroundColor: '#FFF7F8' }}>
+                <SafeAreaView style={styles.container}>
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={styles.keyboardView}
                     >
-                        <View style={styles.header}>
-                            <Text style={styles.title}>Viajes EAD</Text>
-                            <Text style={styles.subtitle}>Sistema de Pases Escolares</Text>
+                        <ScrollView
+                            contentContainerStyle={styles.scrollContent}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            <View style={styles.header}>
+                                <Text style={styles.title}>Viajes EAD</Text>
+                                <Text style={styles.subtitle}>Sistema de Pases Escolares</Text>
+                            </View>
+                            <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center', maxHeight: 200 }}>
+                                <EadLogo width={100}/>
+                                <PucvLogo width={100} height={100}/>
+                            </View>
+                            <Card style={styles.loginCard}>
+                                {showLogoutMessage && (
+                                    <View style={styles.successMessage}>
+                                        <Text style={styles.successMessageText}>
+                                            ✓ Has cerrado sesión exitosamente
+                                        </Text>
+                                    </View>
+                                )}
+                                <Input
+                                    label="Correo Electrónico"
+                                    placeholder="tu@email.cl"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    autoComplete="email"
+                                />
+                                <Input
+                                    label="Contraseña"
+                                    placeholder="••••••••"
+                                    value={password}
+                                    onChangeText={(text) => {
+                                        setPassword(text);
+                                        if (passwordError) setPasswordError('');
+                                    }}
+                                    secureTextEntry
+                                    autoComplete="password"
+                                />
+
+                                {passwordError ? (
+                                    <Text style={styles.passwordErrorText}>{passwordError}</Text>
+                                ) : null}
+
+                                <Button
+                                    title="Iniciar Sesión"
+                                    onPress={handleLogin}
+                                    loading={loading}
+                                    style={styles.loginButton}
+                                />
+
+                                <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.forgotPasswordButton}>
+                                    <Text style={styles.forgotPasswordText}>
+                                        ¿Olvidaste tu contraseña?
+                                    </Text>
+                                </TouchableOpacity>
+                            </Card>
+                        </ScrollView>
+                    </KeyboardAvoidingView>
+
+                    {/* --- Modal de Recuperación Mejorado --- */}
+                    <Modal
+                        animationType="slide"
+                        transparent={true}
+                        visible={modalVisible}
+                        onRequestClose={closeModalAndReset}
+                    >
+                        <View style={styles.modalCenteredView}>
+                            <View style={styles.modalView}>
+                                {resetStatus ? (
+                                    <>
+                                        <Text style={styles.modalTitle}>
+                                            {resetStatus.type === 'success' ? 'Éxito' : 'Error'}
+                                        </Text>
+                                        <Text style={[
+                                            styles.modalText,
+                                            resetStatus.type === 'success' ? styles.successText : styles.errorText
+                                        ]}>
+                                            {resetStatus.message}
+                                        </Text>
+                                        <Button
+                                            title="Cerrar"
+                                            onPress={closeModalAndReset}
+                                            style={styles.modalButton}
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        <Text style={styles.modalTitle}>Recuperar Contraseña</Text>
+                                        <Text style={styles.modalText}>
+                                            Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.
+                                        </Text>
+                                        <Input
+                                            label="Correo Electrónico"
+                                            placeholder="tu@email.cl"
+                                            value={resetEmail}
+                                            onChangeText={setResetEmail}
+                                            keyboardType="email-address"
+                                            autoCapitalize="none"
+                                            autoComplete="email"
+                                            containerStyle={{ width: '100%' }}
+                                        />
+                                        <Button
+                                            title="Enviar Correo"
+                                            onPress={handlePasswordReset}
+                                            loading={resetLoading}
+                                            style={styles.modalButton}
+                                        />
+                                        <Button
+                                            title="Cancelar"
+                                            onPress={closeModalAndReset}
+                                            variant="outline"
+                                            style={styles.modalButton}
+                                        />
+                                    </>
+                                )}
+                            </View>
                         </View>
-                        <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center', maxHeight: 200 }}>
-                            <EadLogo width={100}/>
-                            <PucvLogo width={100} height={100}/>
-                        </View>
-                        <Card style={styles.loginCard}>
-                            {showLogoutMessage && (
-                                <View style={styles.successMessage}>
-                                    <Text style={styles.successMessageText}>
-                                        ✓ Has cerrado sesión exitosamente
-                                    </Text>
-                                </View>
-                            )}
-                            <Input
-                                label="Correo Electrónico"
-                                placeholder="tu@email.cl"
-                                value={email}
-                                onChangeText={setEmail}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                autoComplete="email"
-                            />
-                            <Input
-                                label="Contraseña"
-                                placeholder="••••••••"
-                                value={password}
-                                onChangeText={(text) => {
-                                    setPassword(text);
-                                    if (passwordError) setPasswordError('');
-                                }}
-                                secureTextEntry
-                                autoComplete="password"
-                            />
-
-                            {passwordError ? (
-                                <Text style={styles.passwordErrorText}>{passwordError}</Text>
-                            ) : null}
-
-                            <Button
-                                title="Iniciar Sesión"
-                                onPress={handleLogin}
-                                loading={loading}
-                                style={styles.loginButton}
-                            />
-
-                            <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.forgotPasswordButton}>
-                                <Text style={styles.forgotPasswordText}>
-                                    ¿Olvidaste tu contraseña?
-                                </Text>
-                            </TouchableOpacity>
-                        </Card>
-                    </ScrollView>
-                </KeyboardAvoidingView>
-
-                {/* --- Modal de Recuperación Mejorado --- */}
-                <Modal
-                    animationType="slide"
-                    transparent={true}
-                    visible={modalVisible}
-                    onRequestClose={closeModalAndReset}
-                >
-                    <View style={styles.modalCenteredView}>
-                        <View style={styles.modalView}>
-                            {resetStatus ? (
-                                <>
-                                    <Text style={styles.modalTitle}>
-                                        {resetStatus.type === 'success' ? 'Éxito' : 'Error'}
-                                    </Text>
-                                    <Text style={[
-                                        styles.modalText,
-                                        resetStatus.type === 'success' ? styles.successText : styles.errorText
-                                    ]}>
-                                        {resetStatus.message}
-                                    </Text>
-                                    <Button
-                                        title="Cerrar"
-                                        onPress={closeModalAndReset}
-                                        style={styles.modalButton}
-                                    />
-                                </>
-                            ) : (
-                                <>
-                                    <Text style={styles.modalTitle}>Recuperar Contraseña</Text>
-                                    <Text style={styles.modalText}>
-                                        Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.
-                                    </Text>
-                                    <Input
-                                        label="Correo Electrónico"
-                                        placeholder="tu@email.cl"
-                                        value={resetEmail}
-                                        onChangeText={setResetEmail}
-                                        keyboardType="email-address"
-                                        autoCapitalize="none"
-                                        autoComplete="email"
-                                        containerStyle={{ width: '100%' }}
-                                    />
-                                    <Button
-                                        title="Enviar Correo"
-                                        onPress={handlePasswordReset}
-                                        loading={resetLoading}
-                                        style={styles.modalButton}
-                                    />
-                                    <Button
-                                        title="Cancelar"
-                                        onPress={closeModalAndReset}
-                                        variant="outline"
-                                        style={styles.modalButton}
-                                    />
-                                </>
-                            )}
-                        </View>
-                    </View>
-                </Modal>
-            </SafeAreaView>
-        </View>
+                    </Modal>
+                </SafeAreaView>
+            </View>
+        </React.Fragment>
     );
 }
 

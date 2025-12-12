@@ -46,7 +46,6 @@ export async function obtenerReportesAuditoria(
 
         return reportes;
     } catch (error) {
-        console.error('Error obteniendo reportes:', error);
         throw error;
     }
 }
@@ -105,8 +104,6 @@ export async function exportarReporteCSV(
             await Sharing.shareAsync(fileUri);
         }
     }
-
-    console.log('Reporte exportado exitosamente');
 }
 
 export async function obtenerPasesSinUso(viajeId: string): Promise<void> {
@@ -188,10 +185,8 @@ export async function obtenerPasesSinUso(viajeId: string): Promise<void> {
         }
 
         await batch.commit();
-        console.log('Pases sin uso registrados en auditoría');
 
     } catch (error) {
-        console.error('Error registrando pases sin uso:', error);
         throw error;
     }
 }

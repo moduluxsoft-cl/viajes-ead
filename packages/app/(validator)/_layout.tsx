@@ -5,7 +5,7 @@ import {IoPeople, IoScan, IoSettings, IoDocumentText} from "react-icons/io5";
 import {useAuth} from "@shared/contexts/AuthContext";
 import {LoadingSpinner} from "@shared/components/ui/LoadingSpinner";
 import {LogoutButton} from '@shared/components/ui/LogoutButton';
-import {AdminHeader} from "@shared/components/ui/AdminHeader";
+import {Header} from "@shared/components/ui/Header";
 
 export default function ValidatorLayout() {
     const { loading, userData } = useAuth();
@@ -24,7 +24,7 @@ export default function ValidatorLayout() {
                 screenOptions={{
                     headerShown: true,
                     header: () => (
-                        <AdminHeader
+                        <Header
                             title="Validador de Pases"
                             subtitle={`Hola ${userData.nombre} ${userData.apellido}!`}
                         />
@@ -59,7 +59,7 @@ export default function ValidatorLayout() {
                             <IoScan color={color} size={size} />
                         ),
                         header: () => (
-                            <AdminHeader
+                            <Header
                                 title="Validador de Pases"
                                 subtitle={`Hola ${userData.nombre} ${userData.apellido}!`}
                             />
@@ -74,7 +74,7 @@ export default function ValidatorLayout() {
                             <IoPeople color={color} size={size} />
                         ),
                         header: () => (
-                            <AdminHeader title="Gestión de Usuarios" />
+                            <Header title="Gestión de Usuarios" />
                         ),
                     }}
                 />
@@ -86,7 +86,7 @@ export default function ValidatorLayout() {
                             <IoSettings color={color} size={size} />
                         ),
                         header: () => (
-                            <AdminHeader
+                            <Header
                                 title="Configuraciones Viaje"
                             />
                         ),
@@ -100,7 +100,7 @@ export default function ValidatorLayout() {
                             <IoDocumentText color={color} size={size} />
                         ),
                         header: () => (
-                            <AdminHeader title="Reportería de Auditoría" />
+                            <Header title="Reportería de Auditoría" />
                         ),
                     }}
                 />

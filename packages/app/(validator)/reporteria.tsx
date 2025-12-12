@@ -9,6 +9,7 @@ import {exportarReporteCSV, obtenerReportesAuditoria} from '@shared/services/rep
 import {Picker} from '@react-native-picker/picker';
 import {IoFilter, IoWarning} from "react-icons/io5";
 import {getPropertyValues} from '@shared/services/configuracionService';
+import Head from "expo-router/head";
 
 export default function ReporteriaScreen() {
     const { userData } = useAuth();
@@ -63,7 +64,7 @@ export default function ReporteriaScreen() {
             setReportes(datos);
             aplicarFiltros(datos);
         } catch (error) {
-            console.error('Error cargando reportes:', error);
+            throw new Error(`Error cargando reportes: ${error}`);
         } finally {
             setLoading(false);
         }
@@ -74,7 +75,7 @@ export default function ReporteriaScreen() {
             const carrerasList = await getPropertyValues("CARRERA");
             setCarreras(['todas', ...carrerasList]);
         } catch (error) {
-            console.error('Error cargando carreras:', error);
+            throw new Error(`Error cargando carreras: ${error}`);
         }
     }, []);
 
@@ -133,16 +134,12 @@ export default function ReporteriaScreen() {
     };
 
     const handleExportar = async () => {
-        try {
-            await exportarReporteCSV(reportesFiltrados, {
-                fechaInicio,
-                fechaFin,
-                carrera: carreraSeleccionada,
-                soloAnomalias: mostrarSoloAnomalias
-            });
-        } catch (error) {
-            console.error('Error exportando:', error);
-        }
+        await exportarReporteCSV(reportesFiltrados, {
+            fechaInicio,
+            fechaFin,
+            carrera: carreraSeleccionada,
+            soloAnomalias: mostrarSoloAnomalias
+        });
     };
 
     const getEstadoColor = (estado: string) => {
@@ -257,153 +254,159 @@ export default function ReporteriaScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.statsContainer}>
-                    <View style={styles.statCard}>
-                        <Text style={styles.statValue}>{estadisticas.total}</Text>
-                        <Text style={styles.statLabel}>Total</Text>
-                    </View>
-                    <View style={[styles.statCard, styles.statCardOk]}>
-                        <Text style={styles.statValue}>{estadisticas.ok}</Text>
-                        <Text style={styles.statLabel}>OK</Text>
-                        <Text style={styles.statPercent}>
-                            {estadisticas.porcentajeOk.toFixed(1)}%
-                        </Text>
-                    </View>
-                    <View style={[styles.statCard, styles.statCardAnomalia]}>
-                        <Text style={styles.statValue}>
-                            {estadisticas.total - estadisticas.ok}
-                        </Text>
-                        <Text style={styles.statLabel}>Anomalías</Text>
-                        <Text style={styles.statPercent}>
-                            {estadisticas.porcentajeAnomalias.toFixed(1)}%
-                        </Text>
-                    </View>
-                </View>
-            </View>
-
-            <View style={styles.filtersContainer}>
-                <View style={styles.filterRow}>
-                    <TouchableOpacity
-                        style={[
-                            styles.filterButton,
-                            mostrarSoloAnomalias && styles.filterButtonActive
-                        ]}
-                        onPress={() => setMostrarSoloAnomalias(!mostrarSoloAnomalias)}
-                    >
-                        <IoFilter size={20} color={mostrarSoloAnomalias ? '#fff' : '#374151'} />
-                        <Text style={[
-                            styles.filterButtonText,
-                            mostrarSoloAnomalias && styles.filterButtonTextActive
-                        ]}>
-                            Solo Anomalías
-                        </Text>
-                    </TouchableOpacity>
-
-                    <Button
-                        title="Exportar CSV"
-                        onPress={handleExportar}
-                        style={styles.exportButton}
-                        textStyle={{ fontSize: 14 }}
-                    />
-                </View>
-
-                <View style={styles.searchContainer}>
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Buscar por nombre o RUT..."
-                        value={busquedaTexto}
-                        onChangeText={setBusquedaTexto}
-                        placeholderTextColor="#9ca3af"
-                    />
-                </View>
-
-                <View style={styles.filterRow}>
-                    {Platform.OS === 'web' ? (
-                        <View style={styles.dateContainer}>
-                            <View style={styles.dateInputContainer}>
-                                <Text style={styles.dateLabel}>Desde:</Text>
-                                <input
-                                    type="date"
-                                    value={formatDateToInput(fechaInicio)}
-                                    onChange={(e) => handleDateChange(e.target.value, 'inicio')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '10px',
-                                        borderRadius: '8px',
-                                        border: '1px solid #d1d5db',
-                                        fontSize: '14px',
-                                        backgroundColor: '#fff',
-                                    }}
-                                />
-                            </View>
-                            <View style={styles.dateInputContainer}>
-                                <Text style={styles.dateLabel}>Hasta:</Text>
-                                <input
-                                    type="date"
-                                    value={formatDateToInput(fechaFin)}
-                                    onChange={(e) => handleDateChange(e.target.value, 'fin')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '10px',
-                                        borderRadius: '8px',
-                                        border: '1px solid #d1d5db',
-                                        fontSize: '14px',
-                                        backgroundColor: '#fff',
-                                    }}
-                                />
-                            </View>
+        <React.Fragment>
+            <Head>
+                <title>Viajes EAD | Reportería</title>
+                <meta name="description" content="Visualiza y descarga reportes de validación de viajes." />
+            </Head>
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <View style={styles.statsContainer}>
+                        <View style={styles.statCard}>
+                            <Text style={styles.statValue}>{estadisticas.total}</Text>
+                            <Text style={styles.statLabel}>Total</Text>
                         </View>
-                    ) : (
-                        <>
-                            <View style={styles.dateButton}>
-                                <Text style={styles.dateLabel}>Desde:</Text>
-                                <Text style={styles.dateButtonText}>
-                                    {fechaInicio.toLocaleDateString('es-CL')}
-                                </Text>
-                            </View>
-                            <View style={styles.dateButton}>
-                                <Text style={styles.dateLabel}>Hasta:</Text>
-                                <Text style={styles.dateButtonText}>
-                                    {fechaFin.toLocaleDateString('es-CL')}
-                                </Text>
-                            </View>
-                        </>
-                    )}
-                </View>
-
-                <View style={styles.pickerContainer}>
-                    <Picker
-                        selectedValue={carreraSeleccionada}
-                        onValueChange={setCarreraSeleccionada}
-                        style={styles.picker}
-                    >
-                        {carreras.map(carrera => (
-                            <Picker.Item
-                                key={carrera}
-                                label={carrera === 'todas' ? 'Todas las carreras' : carrera}
-                                value={carrera}
-                            />
-                        ))}
-                    </Picker>
-                </View>
-            </View>
-
-            <FlatList
-                data={reportesFiltrados}
-                renderItem={renderReporteItem}
-                keyExtractor={(item) => `${item.viajeId}_${item.estudianteId}`}
-                contentContainerStyle={styles.listContainer}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>
-                            No se encontraron registros con los filtros aplicados
-                        </Text>
+                        <View style={[styles.statCard, styles.statCardOk]}>
+                            <Text style={styles.statValue}>{estadisticas.ok}</Text>
+                            <Text style={styles.statLabel}>OK</Text>
+                            <Text style={styles.statPercent}>
+                                {estadisticas.porcentajeOk.toFixed(1)}%
+                            </Text>
+                        </View>
+                        <View style={[styles.statCard, styles.statCardAnomalia]}>
+                            <Text style={styles.statValue}>
+                                {estadisticas.total - estadisticas.ok}
+                            </Text>
+                            <Text style={styles.statLabel}>Anomalías</Text>
+                            <Text style={styles.statPercent}>
+                                {estadisticas.porcentajeAnomalias.toFixed(1)}%
+                            </Text>
+                        </View>
                     </View>
-                }
-            />
-        </SafeAreaView>
+                </View>
+
+                <View style={styles.filtersContainer}>
+                    <View style={styles.filterRow}>
+                        <TouchableOpacity
+                            style={[
+                                styles.filterButton,
+                                mostrarSoloAnomalias && styles.filterButtonActive
+                            ]}
+                            onPress={() => setMostrarSoloAnomalias(!mostrarSoloAnomalias)}
+                        >
+                            <IoFilter size={20} color={mostrarSoloAnomalias ? '#fff' : '#374151'} />
+                            <Text style={[
+                                styles.filterButtonText,
+                                mostrarSoloAnomalias && styles.filterButtonTextActive
+                            ]}>
+                                Solo Anomalías
+                            </Text>
+                        </TouchableOpacity>
+
+                        <Button
+                            title="Exportar CSV"
+                            onPress={handleExportar}
+                            style={styles.exportButton}
+                            textStyle={{ fontSize: 14 }}
+                        />
+                    </View>
+
+                    <View style={styles.searchContainer}>
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Buscar por nombre o RUT..."
+                            value={busquedaTexto}
+                            onChangeText={setBusquedaTexto}
+                            placeholderTextColor="#9ca3af"
+                        />
+                    </View>
+
+                    <View style={styles.filterRow}>
+                        {Platform.OS === 'web' ? (
+                            <View style={styles.dateContainer}>
+                                <View style={styles.dateInputContainer}>
+                                    <Text style={styles.dateLabel}>Desde:</Text>
+                                    <input
+                                        type="date"
+                                        value={formatDateToInput(fechaInicio)}
+                                        onChange={(e) => handleDateChange(e.target.value, 'inicio')}
+                                        style={{
+                                            flex: 1,
+                                            padding: '10px',
+                                            borderRadius: '8px',
+                                            border: '1px solid #d1d5db',
+                                            fontSize: '14px',
+                                            backgroundColor: '#fff',
+                                        }}
+                                    />
+                                </View>
+                                <View style={styles.dateInputContainer}>
+                                    <Text style={styles.dateLabel}>Hasta:</Text>
+                                    <input
+                                        type="date"
+                                        value={formatDateToInput(fechaFin)}
+                                        onChange={(e) => handleDateChange(e.target.value, 'fin')}
+                                        style={{
+                                            flex: 1,
+                                            padding: '10px',
+                                            borderRadius: '8px',
+                                            border: '1px solid #d1d5db',
+                                            fontSize: '14px',
+                                            backgroundColor: '#fff',
+                                        }}
+                                    />
+                                </View>
+                            </View>
+                        ) : (
+                            <>
+                                <View style={styles.dateButton}>
+                                    <Text style={styles.dateLabel}>Desde:</Text>
+                                    <Text style={styles.dateButtonText}>
+                                        {fechaInicio.toLocaleDateString('es-CL')}
+                                    </Text>
+                                </View>
+                                <View style={styles.dateButton}>
+                                    <Text style={styles.dateLabel}>Hasta:</Text>
+                                    <Text style={styles.dateButtonText}>
+                                        {fechaFin.toLocaleDateString('es-CL')}
+                                    </Text>
+                                </View>
+                            </>
+                        )}
+                    </View>
+
+                    <View style={styles.pickerContainer}>
+                        <Picker
+                            selectedValue={carreraSeleccionada}
+                            onValueChange={setCarreraSeleccionada}
+                            style={styles.picker}
+                        >
+                            {carreras.map(carrera => (
+                                <Picker.Item
+                                    key={carrera}
+                                    label={carrera === 'todas' ? 'Todas las carreras' : carrera}
+                                    value={carrera}
+                                />
+                            ))}
+                        </Picker>
+                    </View>
+                </View>
+
+                <FlatList
+                    data={reportesFiltrados}
+                    renderItem={renderReporteItem}
+                    keyExtractor={(item) => `${item.viajeId}_${item.estudianteId}`}
+                    contentContainerStyle={styles.listContainer}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>
+                                No se encontraron registros con los filtros aplicados
+                            </Text>
+                        </View>
+                    }
+                />
+            </SafeAreaView>
+        </React.Fragment>
     );
 }
 

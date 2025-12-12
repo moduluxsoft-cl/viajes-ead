@@ -3,17 +3,16 @@ import {Redirect, Stack} from 'expo-router';
 import React from 'react';
 import {LoadingSpinner} from "@shared/components/ui/LoadingSpinner";
 import {useAuth} from "@shared/contexts/AuthContext";
-import {LogoutButton} from '@shared/components/ui/LogoutButton';
 import {StyleSheet, View, ViewStyle} from "react-native";
+import {LogoutButton} from "@shared/components/ui/LogoutButton";
+import {Header} from "@shared/components/ui/Header";
 
 export default function StudentLayout() {
     const { loading, userData } = useAuth();
-    const TEST_USER_UID = 'D7G9KmuVyZYLxUVSlsFf5f2VJi63';
-
     if (loading || !userData) {
         return <LoadingSpinner message="Cargando..." />;
     }
-    if (!loading && (!userData || userData.role !== 'student')) {
+    if (!loading && (userData?.role !== 'student')) {
         return <Redirect href="/(auth)/login" />;
     }
 
@@ -21,20 +20,17 @@ export default function StudentLayout() {
         <Stack
             screenOptions={{
                 headerShown: true,
-                headerStyle: { backgroundColor: '#FFF7F8' },
-                headerTintColor: '#2B2B2B',
-                headerTitleAlign: 'center',
-                headerShadowVisible: false,
-                headerRight: () => <LogoutButton />,
+                header: () => (
+                    <Header
+                        title="Mi Pase QR"
+                        subtitle={`Hola ${userData.nombre} ${userData.apellido}!`}
+                    />
+                ),
             }}
         >
             <Stack.Screen
                 name="index"
                 options={{ title: 'Mi Pase QR' }}
-            />
-            <Stack.Screen
-                name="history"
-                options={{ title: 'Historial de Pases' }}
             />
         </Stack>
     );

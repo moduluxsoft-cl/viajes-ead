@@ -12,6 +12,7 @@ import {
 } from '@shared/services/viajesService';
 import {toast} from "react-toastify";
 import {IoInformationCircle} from "react-icons/io5";
+import Head from "expo-router/head";
 
 type ViajeFormData = {
     destino: string;
@@ -117,102 +118,108 @@ export default function ConfiguracionScreen() {
     if (userData?.role !== 'admin') return (<SafeAreaView style={styles.container}><Text style={styles.errorText}>No tienes permiso para acceder.</Text></SafeAreaView>);
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView>
-                <View style={styles.innerDiv}>
-                    {activeTrip && (
-                        <Card style={styles.activeTripInfoCard}>
-                            <Text style={styles.activeTripTitle}>Viaje Activo Actual</Text>
-                            <Text style={styles.activeTripText}>Destino: {activeTrip.destino}</Text>
-                            <Text style={styles.activeTripText}>Fecha: {formatDateToString(activeTrip.fechaViaje)}</Text>
-                            <Text style={styles.activeTripText}>Capacidad: {activeTrip.capacidadMaxima}</Text>
+        <React.Fragment>
+            <Head>
+                <title>Viajes EAD | Configuraciones</title>
+                <meta name="description" content="Configuración de viajes para administradores." />
+            </Head>
+            <SafeAreaView style={styles.container}>
+                <ScrollView>
+                    <View style={styles.innerDiv}>
+                        {activeTrip && (
+                            <Card style={styles.activeTripInfoCard}>
+                                <Text style={styles.activeTripTitle}>Viaje Activo Actual</Text>
+                                <Text style={styles.activeTripText}>Destino: {activeTrip.destino}</Text>
+                                <Text style={styles.activeTripText}>Fecha: {formatDateToString(activeTrip.fechaViaje)}</Text>
+                                <Text style={styles.activeTripText}>Capacidad: {activeTrip.capacidadMaxima}</Text>
+                            </Card>
+                        )}
+
+                        {paseStats && (
+                            <Card style={styles.statsCard}>
+                                <Text style={styles.statsTitle}>Estadísticas de Pases (Viaje Actual)</Text>
+                                <Text style={styles.statsText}>Estudiantes con QR generados: {paseStats.estudiantesUnicosConQR}</Text>
+                                <Text style={styles.statsText}>Pases usados 1 vez: {paseStats.pasesUsadosUnaVez}</Text>
+                                <Text style={styles.statsText}>Pases usados 2 veces: {paseStats.pasesUsadosDosVeces}</Text>
+                            </Card>
+                        )}
+
+                        <Card style={styles.card}>
+                            <Text style={styles.label}>Capacidad Máxima</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Ej: 300"
+                                keyboardType="number-pad"
+                                value={formData.capacidadMaxima?.toString() || ''}
+                                onChangeText={(text) => setFormData(prev => ({ ...prev, capacidadMaxima: parseInt(text) || 0 }))}
+                            />
+
+                            <Text style={styles.label}>Destino del Viaje</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Ej: Campus Coquimbo"
+                                value={formData.destino || ''}
+                                onChangeText={(text) => setFormData(prev => ({ ...prev, destino: text }))}
+                            />
                         </Card>
-                    )}
 
-                    {paseStats && (
-                        <Card style={styles.statsCard}>
-                            <Text style={styles.statsTitle}>Estadísticas de Pases (Viaje Actual)</Text>
-                            <Text style={styles.statsText}>Estudiantes con QR generados: {paseStats.estudiantesUnicosConQR}</Text>
-                            <Text style={styles.statsText}>Pases usados 1 vez: {paseStats.pasesUsadosUnaVez}</Text>
-                            <Text style={styles.statsText}>Pases usados 2 veces: {paseStats.pasesUsadosDosVeces}</Text>
+                        <Card style={styles.infoCard}>
+                            <View style={styles.infoHeader}>
+                                <IoInformationCircle size={24} color="#C4B000" />
+                                <Text style={styles.infoTitle}>Información Importante</Text>
+                            </View>
+                            <View>
+                                {infoItems.map((item, index) => (
+                                    <Text key={index} style={styles.infoText}>• {item}</Text>
+                                ))}
+                            </View>
                         </Card>
-                    )}
-
-                    <Card style={styles.card}>
-                        <Text style={styles.label}>Capacidad Máxima</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Ej: 300"
-                            keyboardType="number-pad"
-                            value={formData.capacidadMaxima?.toString() || ''}
-                            onChangeText={(text) => setFormData(prev => ({ ...prev, capacidadMaxima: parseInt(text) || 0 }))}
+                        <Button
+                            title={saving ? "Guardando..." : "Guardar y Sobrescribir Viaje"}
+                            onPress={handleSave}
+                            disabled={saving}
+                            style={styles.saveButton}
                         />
-
-                        <Text style={styles.label}>Destino del Viaje</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Ej: Campus Coquimbo"
-                            value={formData.destino || ''}
-                            onChangeText={(text) => setFormData(prev => ({ ...prev, destino: text }))}
-                        />
-                    </Card>
-
-                    <Card style={styles.infoCard}>
-                        <View style={styles.infoHeader}>
-                            <IoInformationCircle size={24} color="#C4B000" />
-                            <Text style={styles.infoTitle}>Información Importante</Text>
-                        </View>
-                        <View>
-                            {infoItems.map((item, index) => (
-                                <Text key={index} style={styles.infoText}>• {item}</Text>
-                            ))}
-                        </View>
-                    </Card>
-                    <Button
-                        title={saving ? "Guardando..." : "Guardar y Sobrescribir Viaje"}
-                        onPress={handleSave}
-                        disabled={saving}
-                        style={styles.saveButton}
-                    />
-                </View>
-
-                {successMessage ? (
-                    <View style={styles.successContainer}>
-                        <Text style={styles.successText}>{successMessage}</Text>
                     </View>
-                ) : null}
-            </ScrollView>
 
-            <Modal
-                transparent={true}
-                animationType="fade"
-                visible={showConfirmModal}
-                onRequestClose={() => setShowConfirmModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Confirmar Acción</Text>
-                        <Text style={styles.modalMessage}>
-                            Guardar esta configuración cancelará cualquier viaje activo anterior. ¿Continuar?
-                        </Text>
-                        <View style={styles.modalButtons}>
-                            <Pressable
-                                style={[styles.modalButton, styles.cancelButton]}
-                                onPress={() => setShowConfirmModal(false)}
-                            >
-                                <Text style={styles.cancelButtonText}>Cancelar</Text>
-                            </Pressable>
-                            <Pressable
-                                style={[styles.modalButton, styles.confirmButton]}
-                                onPress={executeSave}
-                            >
-                                <Text style={styles.confirmButtonText}>Sí, Guardar</Text>
-                            </Pressable>
+                    {successMessage ? (
+                        <View style={styles.successContainer}>
+                            <Text style={styles.successText}>{successMessage}</Text>
+                        </View>
+                    ) : null}
+                </ScrollView>
+
+                <Modal
+                    transparent={true}
+                    animationType="fade"
+                    visible={showConfirmModal}
+                    onRequestClose={() => setShowConfirmModal(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Confirmar Acción</Text>
+                            <Text style={styles.modalMessage}>
+                                Guardar esta configuración cancelará cualquier viaje activo anterior. ¿Continuar?
+                            </Text>
+                            <View style={styles.modalButtons}>
+                                <Pressable
+                                    style={[styles.modalButton, styles.cancelButton]}
+                                    onPress={() => setShowConfirmModal(false)}
+                                >
+                                    <Text style={styles.cancelButtonText}>Cancelar</Text>
+                                </Pressable>
+                                <Pressable
+                                    style={[styles.modalButton, styles.confirmButton]}
+                                    onPress={executeSave}
+                                >
+                                    <Text style={styles.confirmButtonText}>Sí, Guardar</Text>
+                                </Pressable>
+                            </View>
                         </View>
                     </View>
-                </View>
-            </Modal>
-        </SafeAreaView>
+                </Modal>
+            </SafeAreaView>
+        </React.Fragment>
     );
 }
 

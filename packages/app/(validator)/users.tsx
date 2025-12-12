@@ -38,6 +38,7 @@ import {
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import {Id, toast} from "react-toastify";
+import Head from "expo-router/head";
 
 // --- TIPO PARA MANEJAR ACCIONES ---
 type ActionToConfirm = {
@@ -478,105 +479,110 @@ export default function UsersScreen() {
     if (loading) return <LoadingSpinner message="Cargando usuarios..." />;
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.controlsContainer}>
-                <TextInput style={styles.searchInput} placeholder="Buscar por nombre, RUT o email..." value={searchQuery} onChangeText={setSearchQuery} />
-                <Button title="Añadir" onPress={() => handleOpenEditModal()} style={styles.addButton} textStyle={{ fontSize: 14 }} />
-            </View>
-            <ScrollView>
-                <View style={styles.csvSectionContainer}>
-                    <Text style={styles.csvSectionTitle}>Carga Masiva de Usuarios</Text>
-                    <Button
-                        title="Cargar CSV (Crear)"
-                        onPress={handleCsvUpload}
-                        style={[styles.csvButton, !canUploadCsv && styles.disabledButton]}
-                        textStyle={{ fontSize: 14 }}
-                        loading={isUploading}
-                        disabled={isUploading || !canUploadCsv}
-                    />
-                    {!canUploadCsv && <Text style={styles.limitWarningText}>{csvUploadLimitMessage}</Text>}
+        <React.Fragment>
+            <Head>
+                <title>Viajes EAD | Usuarios</title>
+                <meta name="description" content="Gestión de usuarios en el sistema de viajes" />
+            </Head>
+            <SafeAreaView style={styles.container}>
+                <View style={styles.controlsContainer}>
+                    <TextInput style={styles.searchInput} placeholder="Buscar por nombre, RUT o email..." value={searchQuery} onChangeText={setSearchQuery} />
+                    <Button title="Añadir" onPress={() => handleOpenEditModal()} style={styles.addButton} textStyle={{ fontSize: 14 }} />
                 </View>
-
-                {currentUser?.role === 'admin' && (
+                <ScrollView>
                     <View style={styles.csvSectionContainer}>
-                        <Text style={styles.csvSectionTitle}>Eliminación Masiva de Usuarios</Text>
+                        <Text style={styles.csvSectionTitle}>Carga Masiva de Usuarios</Text>
                         <Button
-                            title="Cargar CSV (Eliminar)"
-                            onPress={handleCsvDeleteUpload}
-                            style={[styles.csvButton, styles.deleteCsvButton]}
+                            title="Cargar CSV (Crear)"
+                            onPress={handleCsvUpload}
+                            style={[styles.csvButton, !canUploadCsv && styles.disabledButton]}
                             textStyle={{ fontSize: 14 }}
-                            loading={isDeletingCsv}
-                            disabled={isDeletingCsv}
+                            loading={isUploading}
+                            disabled={isUploading || !canUploadCsv}
                         />
-                        <Text style={styles.deleteCsvHintText}>
-                            El CSV para eliminar debe contener solo una columna 'email'.
-                        </Text>
+                        {!canUploadCsv && <Text style={styles.limitWarningText}>{csvUploadLimitMessage}</Text>}
                     </View>
-                )}
+
+                    {currentUser?.role === 'admin' && (
+                        <View style={styles.csvSectionContainer}>
+                            <Text style={styles.csvSectionTitle}>Eliminación Masiva de Usuarios</Text>
+                            <Button
+                                title="Cargar CSV (Eliminar)"
+                                onPress={handleCsvDeleteUpload}
+                                style={[styles.csvButton, styles.deleteCsvButton]}
+                                textStyle={{ fontSize: 14 }}
+                                loading={isDeletingCsv}
+                                disabled={isDeletingCsv}
+                            />
+                            <Text style={styles.deleteCsvHintText}>
+                                El CSV para eliminar debe contener solo una columna 'email'.
+                            </Text>
+                        </View>
+                    )}
 
 
-                <FlatList
-                    data={filteredUsers}
-                    renderItem={renderUser}
-                    keyExtractor={(item) => item.uid}
-                    contentContainerStyle={styles.listContainer}
-                    ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>No se encontraron usuarios</Text></View>}
-                    keyboardShouldPersistTaps="handled"
+                    <FlatList
+                        data={filteredUsers}
+                        renderItem={renderUser}
+                        keyExtractor={(item) => item.uid}
+                        contentContainerStyle={styles.listContainer}
+                        ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>No se encontraron usuarios</Text></View>}
+                        keyboardShouldPersistTaps="handled"
+                    />
+                </ScrollView>
+
+                <UserFormModal visible={editModalVisible} onClose={handleCloseEditModal} onSubmit={handleSaveUser} initialData={selectedUser} saving={saving} />
+
+                <ConfirmationModal
+                    visible={confirmModalVisible}
+                    onClose={() => setConfirmModalVisible(false)}
+                    onConfirm={handleConfirmAction}
+                    {...getConfirmationDetails()}
                 />
-            </ScrollView>
 
-            <UserFormModal visible={editModalVisible} onClose={handleCloseEditModal} onSubmit={handleSaveUser} initialData={selectedUser} saving={saving} />
+                {/* --- MODALES DE RESULTADO ACTUALIZADOS --- */}
 
-            <ConfirmationModal
-                visible={confirmModalVisible}
-                onClose={() => setConfirmModalVisible(false)}
-                onConfirm={handleConfirmAction}
-                {...getConfirmationDetails()}
-            />
+                {/* Modal para resultados de CREACIÓN por CSV */}
+                <CSVResultModal
+                    visible={showCsvResultModal}
+                    onClose={() => { setShowCsvResultModal(false); checkCsvUploadLimit(); }}
+                    result={csvResult}
+                    modalTitle="Resultado de la Carga"
+                    successLabel="Usuarios Creados"
+                />
 
-            {/* --- MODALES DE RESULTADO ACTUALIZADOS --- */}
+                {/* Modal para resultados de ELIMINACIÓN por CSV */}
+                <CSVResultModal
+                    visible={showCsvDeleteResultModal}
+                    onClose={() => setShowCsvDeleteResultModal(false)}
+                    result={csvDeleteResult}
+                    modalTitle="Resultado de la Eliminación Masiva"
+                    successLabel="Usuarios Eliminados"
+                />
 
-            {/* Modal para resultados de CREACIÓN por CSV */}
-            <CSVResultModal
-                visible={showCsvResultModal}
-                onClose={() => { setShowCsvResultModal(false); checkCsvUploadLimit(); }}
-                result={csvResult}
-                modalTitle="Resultado de la Carga"
-                successLabel="Usuarios Creados"
-            />
+                {/* --- MODALES DE CONFIRMACIÓN (SIN CAMBIOS) --- */}
+                <ConfirmationModal
+                    visible={isCsvConfirmModalVisible}
+                    onClose={() => setCsvConfirmModalVisible(false)}
+                    onConfirm={handleConfirmCsvUpload}
+                    title="Confirmar Carga"
+                    message="Estás a punto de procesar un archivo CSV para crear usuarios. ¿Deseas continuar?"
+                />
 
-            {/* Modal para resultados de ELIMINACIÓN por CSV */}
-            <CSVResultModal
-                visible={showCsvDeleteResultModal}
-                onClose={() => setShowCsvDeleteResultModal(false)}
-                result={csvDeleteResult}
-                modalTitle="Resultado de la Eliminación Masiva"
-                successLabel="Usuarios Eliminados"
-            />
-
-            {/* --- MODALES DE CONFIRMACIÓN (SIN CAMBIOS) --- */}
-            <ConfirmationModal
-                visible={isCsvConfirmModalVisible}
-                onClose={() => setCsvConfirmModalVisible(false)}
-                onConfirm={handleConfirmCsvUpload}
-                title="Confirmar Carga"
-                message="Estás a punto de procesar un archivo CSV para crear usuarios. ¿Deseas continuar?"
-            />
-
-            <ConfirmationModal
-                visible={isCsvDeleteConfirmModalVisible}
-                onClose={() => setCsvDeleteConfirmModalVisible(false)}
-                onConfirm={handleConfirmCsvDelete}
-                title="Confirmar Eliminación Masiva"
-                message="Estás a punto de procesar un archivo CSV para ELIMINAR usuarios. Esta acción es irreversible. ¿Deseas continuar?"
-                confirmButtonText="Eliminar Usuarios"
-                isDestructive={true}
-            />
-        </SafeAreaView>
+                <ConfirmationModal
+                    visible={isCsvDeleteConfirmModalVisible}
+                    onClose={() => setCsvDeleteConfirmModalVisible(false)}
+                    onConfirm={handleConfirmCsvDelete}
+                    title="Confirmar Eliminación Masiva"
+                    message="Estás a punto de procesar un archivo CSV para ELIMINAR usuarios. Esta acción es irreversible. ¿Deseas continuar?"
+                    confirmButtonText="Eliminar Usuarios"
+                    isDestructive={true}
+                />
+            </SafeAreaView>
+        </React.Fragment>
     );
 }
 
-// --- ESTILOS (SIN CAMBIOS) ---
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#E4E4E4FF' },
     title: {

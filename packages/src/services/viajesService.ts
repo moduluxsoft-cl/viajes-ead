@@ -434,7 +434,6 @@ export async function registrarValidacionEnAuditoria(
     tipoValidacion: 'IDA' | 'VUELTA',
     validadorData: { uid: string; nombre: string; apellido: string }
 ): Promise<void> {
-    try {
         const paseRef = doc(db, 'pases', paseId);
         const paseDoc = await getDoc(paseRef);
         if (!paseDoc.exists()) throw new Error('Pase no encontrado');
@@ -526,14 +525,8 @@ export async function registrarValidacionEnAuditoria(
                 consolidado: false
             };
 
-            await setDoc(auditoriaRef, nuevoRegistro); // Sintaxis v9
+            await setDoc(auditoriaRef, nuevoRegistro);
         }
-
-        console.log(`Auditoría registrada: ${auditoriaId}, tipo: ${tipoValidacion}`);
-
-    } catch (error) {
-        console.error('Error registrando auditoría:', error);
-    }
 }
 /**
  * Obtiene estadísticas de los pases generados para un viaje específico.

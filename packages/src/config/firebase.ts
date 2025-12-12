@@ -31,11 +31,6 @@ const functions = compatApp.functions();
 // ---- EMULADORES ----
 const useEmulators = Constants.expoConfig?.extra?.useFirebaseEmulators === 'true' || false;
 
-// Debug: Mostrar estado de variables de entorno
-console.log('🔍 DEBUG - Variables de entorno:');
-console.log('  EXPO_PUBLIC_USE_FIREBASE_EMULATORS:', Constants.expoConfig?.extra?.useFirebaseEmulators);
-console.log('  useEmulators (resultado):', useEmulators);
-
 if (useEmulators) {
     // Determina el host: usa variable de entorno, o 'localhost' por defecto
     const host = Constants.expoConfig?.extra?.firebaseEmulatorHost || 'localhost';
@@ -44,11 +39,6 @@ if (useEmulators) {
     const firestorePort = Number(Constants.expoConfig?.extra?.firestoreEmulatorPort ?? '8080');
     const authPort = Number(Constants.expoConfig?.extra?.authEmulatorPort ?? '9099');
     const functionsPort = Number(Constants.expoConfig?.extra?.functionsEmulatorPort ?? '5001');
-
-    console.log(`🔧 Conectando a Firebase Emulators en ${host}`);
-    console.log(`  - Firestore: ${host}:${firestorePort}`);
-    console.log(`  - Auth: ${host}:${authPort}`);
-    console.log(`  - Functions: ${host}:${functionsPort}`);
 
     connectFirestoreEmulator(db, host, firestorePort);
     connectAuthEmulator(auth, `http://${host}:${authPort}`, { disableWarnings: true });

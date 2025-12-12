@@ -18,7 +18,7 @@ jobs:
 
       # Instalar dependencias y build del frontend en viajes-ead-view
       - name: Instalar dependencias
-        run: npm build:app
+        run: npm run build:app
 
       # Realiza el deploy en Firebase Hosting
       - uses: FirebaseExtended/action-hosting-deploy@v0

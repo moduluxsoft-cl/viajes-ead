@@ -51,7 +51,8 @@ export const QRScanner: React.FC<QRScannerProps> = ({
             {scanning ? (
                 <CameraView
                     style={StyleSheet.absoluteFillObject}
-                    autoFocus="on"
+                    facing="back"
+                    autoFocus="off"
                     onBarcodeScanned={(scanningResult) => {
                         if (scanningResult.data) {
                             onQRScanned(scanningResult.data);

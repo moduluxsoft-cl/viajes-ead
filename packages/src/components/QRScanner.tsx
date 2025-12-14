@@ -1,7 +1,7 @@
-import React, {useEffect} from 'react';
-import {Button, Platform, StyleSheet, Text, View} from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Linking from 'expo-linking';
-import {CameraView, useCameraPermissions} from 'expo-camera';
+import React, { useEffect } from 'react';
+import { Button, Platform, StyleSheet, Text, View } from 'react-native';
 
 interface QRScannerProps {
     onQRScanned: (data: string) => void;
@@ -10,10 +10,10 @@ interface QRScannerProps {
 }
 
 export const QRScanner: React.FC<QRScannerProps> = ({
-                                                        onQRScanned,
-                                                        scanning,
-                                                        onToggleScanning,
-                                                    }) => {
+    onQRScanned,
+    scanning,
+    onToggleScanning,
+}) => {
     const [permission, requestPermission] = useCameraPermissions();
 
     useEffect(() => {
@@ -51,6 +51,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
             {scanning ? (
                 <CameraView
                     style={StyleSheet.absoluteFillObject}
+                    autoFocus="on"
                     onBarcodeScanned={(scanningResult) => {
                         if (scanningResult.data) {
                             onQRScanned(scanningResult.data);
